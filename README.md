@@ -2,7 +2,9 @@
 
 > Plataforma de reservas de espacios profesionales, diseñada para gestionar disponibilidad y evitar conflictos bajo concurrencia.
 
-![Reservia](assets/reservia-mark.svg)
+<p align="center">
+  <img src="assets/reservia-mark.svg" alt="Logo de Reservia" width="120">
+</p>
 
 ## Demo
 
