@@ -1,0 +1,16 @@
+{
+  "name": "reservia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistema de reservas y gestión de disponibilidad para espacios profesionales.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "build": "pnpm --filter @reservia/api build",
+    "test": "pnpm --filter @reservia/api test",
+    "test:watch": "pnpm --filter @reservia/api test:watch",
+    "lint": "pnpm --filter @reservia/api lint"
+  },
+  "engines": { "node": ">=20" },
+  "workspaces": ["apps/*", "packages/*"]
+}
