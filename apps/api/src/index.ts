@@ -2,3 +2,6 @@ export * from './modules/bookings/domain/booking.js';
 export * from './modules/bookings/domain/booking-conflict.js';
 export * from './modules/bookings/domain/time-range.js';
 export * from './modules/resources/domain/resource.js';
+export * from './modules/availability/domain/business-hours.js';
+export * from './modules/availability/domain/daily-schedule.js';
+export * from './modules/availability/domain/day-of-week.js';
