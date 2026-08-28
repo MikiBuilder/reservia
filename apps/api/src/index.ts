@@ -7,3 +7,4 @@ export * from './modules/availability/domain/daily-schedule.js';
 export * from './modules/availability/domain/day-of-week.js';
 export * from './modules/availability/domain/blackout-period.js';
 export * from './modules/availability/domain/blackout-reason.js';
+export * from './modules/availability/domain/availability-service.js';
