@@ -4,8 +4,13 @@
   <img src="assets/reservia-mark.svg" alt="Logo de Reservia" width="120">
 </p>
 
-<p align="center"><strong>Plataforma de reservas de espacios profesionales</strong></p>
-<p align="center">Sistema transaccional diseñado para gestionar disponibilidad y evitar conflictos bajo concurrencia.</p>
+<p align="center">
+  <strong>Plataforma de reservas de espacios profesionales</strong>
+</p>
+
+<p align="center">
+  Sistema transaccional diseñado para gestionar disponibilidad y evitar conflictos bajo concurrencia.
+</p>
 
 <p align="center">
   <a href="https://github.com/MikiBuilder/reservia/actions/workflows/ci.yml">
@@ -56,10 +61,11 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Validaciones del dominio.
 - ✅ Tests unitarios.
 - ✅ Integración continua con GitHub Actions.
-- 🚧 Horarios de apertura.
-- ⏳ Bloqueos de calendario.
-- ⏳ Servicio completo de disponibilidad.
-- ⏳ PostgreSQL.
+- ✅ Horarios de apertura.
+- ✅ Bloqueos de disponibilidad.
+- ✅ Servicio de disponibilidad.
+- ✅ Caso de uso de creación de reservas.
+- ⏳ Persistencia con PostgreSQL.
 - ⏳ API REST.
 - ⏳ Cliente web conectado a la API.
 - ⏳ Despliegue público.
@@ -67,6 +73,13 @@ El sistema está diseñado alrededor de un problema central:
 ## Arquitectura
 
 Reservia comenzará como un **monolito modular**. Esta decisión permite mantener una arquitectura clara sin introducir la complejidad operacional de los microservicios demasiado pronto.
+
+La lógica está separada en capas:
+
+- **Dominio**: entidades, value objects y reglas de negocio.
+- **Aplicación**: casos de uso y puertos.
+- **Infraestructura**: persistencia y servicios externos.
+- **Presentación**: API HTTP y cliente web.
 
 ### Módulos previstos
 
@@ -106,6 +119,7 @@ Auditoría y notificaciones
 - Se utilizarán tests de dominio, integración y aceptación.
 - Las decisiones relevantes se documentarán mediante ADRs.
 - No se utilizarán microservicios sin una necesidad demostrable.
+- La disponibilidad se calcula combinando horarios, bloqueos y reservas existentes.
 
 ## Patrones previstos
 
@@ -160,6 +174,7 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 - Node.js 20 o superior.
 - pnpm 10.
 - Git.
+- Docker Desktop, cuando se incorpore PostgreSQL.
 
 ### Instalación
 
@@ -183,7 +198,11 @@ pnpm build
 python3 -m http.server 4173
 ```
 
-Después abre `http://localhost:4173`.
+Después abre:
+
+```text
+http://localhost:4173
+```
 
 ## Estructura del proyecto
 
@@ -219,11 +238,64 @@ La primera especificación está disponible en:
 specs/create-booking.md
 ```
 
-Las especificaciones incluyen objetivos, reglas de negocio, criterios de aceptación y escenarios Gherkin.
+Las especificaciones incluyen:
+
+- Objetivo.
+- Reglas de negocio.
+- Criterios de aceptación.
+- Casos de uso.
+- Escenarios Gherkin.
+- Requisitos no funcionales.
+
+## Documentación técnica
+
+- [Arquitectura](docs/architecture.md)
+- [Roadmap](docs/roadmap.md)
+- [Especificación de creación de reservas](specs/create-booking.md)
+- [Decisiones arquitectónicas](docs/adr/)
 
 ## Roadmap
 
-El roadmap completo está disponible en [`docs/roadmap.md`](docs/roadmap.md).
+### Dominio
+
+- ✅ Recursos reservables.
+- ✅ Reservas.
+- ✅ Horarios de apertura.
+- ✅ Bloqueos de disponibilidad.
+- ✅ Cálculo inicial de disponibilidad.
+- ✅ Caso de uso de creación de reservas.
+
+### Persistencia
+
+- ⏳ PostgreSQL.
+- ⏳ Prisma.
+- ⏳ Migraciones.
+- ⏳ Repositorios persistentes.
+- ⏳ Restricciones contra solapamientos.
+
+### API
+
+- ⏳ NestJS.
+- ⏳ API REST.
+- ⏳ Validación de DTOs.
+- ⏳ OpenAPI.
+- ⏳ Autenticación y autorización.
+
+### Cliente
+
+- ⏳ Next.js.
+- ⏳ Calendario de disponibilidad.
+- ⏳ Flujo de reserva conectado.
+- ⏳ Panel de usuario.
+- ⏳ Panel de administración.
+
+### Producción
+
+- ⏳ Docker Compose.
+- ⏳ CI/CD completo.
+- ⏳ Observabilidad.
+- ⏳ Datos demo.
+- ⏳ Despliegue público.
 
 ## Proyecto de portfolio
 
