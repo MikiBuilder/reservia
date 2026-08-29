@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ResourceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum BlackoutReason {
+  MAINTENANCE
+  PRIVATE_EVENT
+  CLEANING
+  HOLIDAY
+  TEMPORARY_CLOSURE
+}
+
+model Resource {
+  id          String         @id
+  name        String
+  description String         @default("")
+  capacity    Int
+  status      ResourceStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  bookings  Booking[]
+  blackouts BlackoutPeriod[]
+
+  @@index([status])
+}
+
+model Booking {
+  id         String        @id
+  resourceId String
+  customerId String
+  startsAt   DateTime
+  endsAt     DateTime
+  status     BookingStatus @default(PENDING)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@index([resourceId, startsAt, endsAt])
+  @@index([customerId, createdAt])
+  @@index([status])
+}
+
+model BlackoutPeriod {
+  id          String         @id
+  resourceId  String
+  startsAt    DateTime
+  endsAt      DateTime
+  reason      BlackoutReason
+  description String         @default("")
+  createdAt   DateTime       @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@index([resourceId, startsAt, endsAt])
+}
