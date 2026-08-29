@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: reservia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: reservia
+      POSTGRES_USER: reservia
+      POSTGRES_PASSWORD: reservia
+    ports:
+      - "5432:5432"
+    volumes:
+      - reservia-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reservia -d reservia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  reservia-postgres-data:
