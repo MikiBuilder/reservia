@@ -65,14 +65,20 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Bloqueos de disponibilidad.
 - ✅ Servicio de disponibilidad.
 - ✅ Caso de uso de creación de reservas.
-- ⏳ Persistencia con PostgreSQL.
+- ✅ Schema de base de datos con Prisma.
+- ✅ PostgreSQL mediante Docker Compose.
+- ✅ Migración inicial.
+- ✅ Prisma Client generado.
+- ⏳ Repositorio persistente con Prisma.
+- ⏳ Restricción de solapamientos en PostgreSQL.
 - ⏳ API REST.
 - ⏳ Cliente web conectado a la API.
+- ⏳ Autenticación y autorización.
 - ⏳ Despliegue público.
 
 ## Arquitectura
 
-Reservia comenzará como un **monolito modular**. Esta decisión permite mantener una arquitectura clara sin introducir la complejidad operacional de los microservicios demasiado pronto.
+Reservia comienza como un **monolito modular**. Esta decisión permite mantener una arquitectura clara sin introducir la complejidad operacional de los microservicios demasiado pronto.
 
 La lógica está separada en capas:
 
@@ -114,12 +120,14 @@ Auditoría y notificaciones
 - El dominio no depende de HTTP, Prisma ni NestJS.
 - Las reglas críticas viven en el dominio.
 - PostgreSQL será la fuente de verdad para las reservas.
+- Prisma se utiliza como adaptador de persistencia.
 - La base de datos también protegerá contra solapamientos.
 - Las operaciones críticas serán idempotentes.
 - Se utilizarán tests de dominio, integración y aceptación.
 - Las decisiones relevantes se documentarán mediante ADRs.
 - No se utilizarán microservicios sin una necesidad demostrable.
 - La disponibilidad se calcula combinando horarios, bloqueos y reservas existentes.
+- Los repositorios se abstraen mediante interfaces para mantener el dominio aislado.
 
 ## Patrones previstos
 
@@ -143,8 +151,9 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 - TypeScript.
 - Node.js.
 - NestJS.
-- PostgreSQL.
-- Prisma.
+- PostgreSQL 16.
+- Prisma 6.
+- Docker Compose.
 
 ### Frontend
 
@@ -164,6 +173,7 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 
 - Docker.
 - PostgreSQL.
+- Migraciones reproducibles.
 - Despliegue mediante servicios con planes gratuitos.
 - Datos demo para facilitar la evaluación del proyecto.
 
@@ -174,7 +184,7 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 - Node.js 20 o superior.
 - pnpm 10.
 - Git.
-- Docker Desktop, cuando se incorpore PostgreSQL.
+- Docker Desktop.
 
 ### Instalación
 
@@ -182,6 +192,48 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 git clone https://github.com/MikiBuilder/reservia.git
 cd reservia
 pnpm install
+```
+
+### Iniciar PostgreSQL
+
+```bash
+docker compose up -d
+```
+
+Comprobar el estado del contenedor:
+
+```bash
+docker compose ps
+```
+
+### Configurar variables de entorno
+
+Crea un archivo `.env` en la raíz:
+
+```env
+NODE_ENV=development
+DATABASE_URL=postgresql://reservia:reservia@localhost:5432/reservia
+PORT=3000
+```
+
+No subas el archivo `.env` al repositorio.
+
+### Generar Prisma Client
+
+```bash
+pnpm --filter @reservia/api exec prisma generate
+```
+
+### Ejecutar migraciones
+
+```bash
+pnpm --filter @reservia/api exec prisma migrate dev
+```
+
+### Abrir Prisma Studio
+
+```bash
+pnpm --filter @reservia/api exec prisma studio
 ```
 
 ### Verificaciones
@@ -210,6 +262,9 @@ http://localhost:4173
 reservia/
 ├── apps/
 │   └── api/
+│       ├── prisma/
+│       │   ├── migrations/
+│       │   └── schema.prisma
 │       ├── src/
 │       │   ├── modules/
 │       │   └── index.ts
@@ -220,6 +275,7 @@ reservia/
 │   ├── architecture.md
 │   └── roadmap.md
 ├── specs/
+├── docker-compose.yml
 ├── index.html
 ├── styles.css
 ├── app.js
@@ -267,10 +323,12 @@ Las especificaciones incluyen:
 
 ### Persistencia
 
-- ⏳ PostgreSQL.
-- ⏳ Prisma.
-- ⏳ Migraciones.
+- ✅ PostgreSQL local.
+- ✅ Prisma.
+- ✅ Schema inicial.
+- ✅ Migración inicial.
 - ⏳ Repositorios persistentes.
+- ⏳ Transacciones.
 - ⏳ Restricciones contra solapamientos.
 
 ### API
@@ -291,7 +349,7 @@ Las especificaciones incluyen:
 
 ### Producción
 
-- ⏳ Docker Compose.
+- ⏳ Docker Compose completo.
 - ⏳ CI/CD completo.
 - ⏳ Observabilidad.
 - ⏳ Datos demo.
