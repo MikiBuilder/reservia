@@ -10,3 +10,4 @@ export * from './modules/availability/domain/blackout-reason.js';
 export * from './modules/availability/domain/availability-service.js';
 export * from './modules/bookings/application/booking-repository.js';
 export * from './modules/bookings/application/create-booking.js';
+export * from './modules/bookings/infrastructure/prisma-booking-repository.js';
