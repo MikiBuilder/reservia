@@ -1,6 +1,11 @@
 import { TimeRange } from './time-range.js';
 
-export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+export type BookingStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'NO_SHOW';
 
 export class Booking {
   private constructor(
@@ -19,27 +24,98 @@ export class Booking {
     period: TimeRange;
     now?: Date;
   }): Booking {
-    if (!params.id || !params.resourceId || !params.customerId) {
-      throw new Error('BOOKING_REQUIRED_FIELDS');
+    if (!params.id.trim()) {
+      throw new Error('BOOKING_ID_REQUIRED');
     }
-    return new Booking(params.id, params.resourceId, params.customerId, params.period, 'PENDING', params.now ?? new Date());
+
+    if (!params.resourceId.trim()) {
+      throw new Error('BOOKING_RESOURCE_ID_REQUIRED');
+    }
+
+    if (!params.customerId.trim()) {
+      throw new Error('BOOKING_CUSTOMER_ID_REQUIRED');
+    }
+
+    return new Booking(
+      params.id,
+      params.resourceId,
+      params.customerId,
+      params.period,
+      'PENDING',
+      params.now ?? new Date(),
+    );
+  }
+
+  static rehydrate(params: {
+    id: string;
+    resourceId: string;
+    customerId: string;
+    period: TimeRange;
+    status: BookingStatus;
+    createdAt: Date;
+  }): Booking {
+    if (!params.id.trim()) {
+      throw new Error('BOOKING_ID_REQUIRED');
+    }
+
+    if (!params.resourceId.trim()) {
+      throw new Error('BOOKING_RESOURCE_ID_REQUIRED');
+    }
+
+    if (!params.customerId.trim()) {
+      throw new Error('BOOKING_CUSTOMER_ID_REQUIRED');
+    }
+
+    return new Booking(
+      params.id,
+      params.resourceId,
+      params.customerId,
+      params.period,
+      params.status,
+      params.createdAt,
+    );
   }
 
   confirm(): void {
-    if (this.status !== 'PENDING') throw new Error('BOOKING_CANNOT_CONFIRM');
+    if (this.status !== 'PENDING') {
+      throw new Error('BOOKING_CANNOT_CONFIRM');
+    }
+
     this.status = 'CONFIRMED';
   }
 
   cancel(): void {
-    if (!['PENDING', 'CONFIRMED'].includes(this.status)) throw new Error('BOOKING_CANNOT_CANCEL');
+    if (!['PENDING', 'CONFIRMED'].includes(this.status)) {
+      throw new Error('BOOKING_CANNOT_CANCEL');
+    }
+
     this.status = 'CANCELLED';
   }
 
   complete(): void {
-    if (this.status !== 'CONFIRMED') throw new Error('BOOKING_CANNOT_COMPLETE');
+    if (this.status !== 'CONFIRMED') {
+      throw new Error('BOOKING_CANNOT_COMPLETE');
+    }
+
     this.status = 'COMPLETED';
   }
 
-  get currentStatus(): BookingStatus { return this.status; }
-  isActive(): boolean { return this.status === 'PENDING' || this.status === 'CONFIRMED'; }
+  markAsNoShow(): void {
+    if (this.status !== 'CONFIRMED') {
+      throw new Error('BOOKING_CANNOT_MARK_AS_NO_SHOW');
+    }
+
+    this.status = 'NO_SHOW';
+  }
+
+  get currentStatus(): BookingStatus {
+    return this.status;
+  }
+
+  isActive(): boolean {
+    return (
+      this.status === 'PENDING' ||
+      this.status === 'CONFIRMED'
+    );
+  }
 }
