@@ -47,8 +47,8 @@ model Booking {
   id         String        @id
   resourceId String
   customerId String
-  startsAt   DateTime
-  endsAt     DateTime
+  startsAt   DateTime @db.Timestamp(3)
+  endsAt     DateTime @db.Timestamp(3)
   status     BookingStatus @default(PENDING)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
