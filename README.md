@@ -57,7 +57,7 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Entidad `Resource`.
 - ✅ Value object `TimeRange`.
 - ✅ Gestión de estados de reserva.
-- ✅ Detección de solapamientos.
+- ✅ Detección de solapamientos en el dominio.
 - ✅ Validaciones del dominio.
 - ✅ Tests unitarios.
 - ✅ Integración continua con GitHub Actions.
@@ -69,8 +69,11 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ PostgreSQL mediante Docker Compose.
 - ✅ Migración inicial.
 - ✅ Prisma Client generado.
-- ⏳ Repositorio persistente con Prisma.
-- ⏳ Restricción de solapamientos en PostgreSQL.
+- ✅ Repositorio persistente con Prisma.
+- ✅ Tests de integración con PostgreSQL.
+- ✅ Restricción de solapamientos a nivel de PostgreSQL.
+- ⏳ Transacciones completas de aplicación.
+- ⏳ Idempotencia persistente.
 - ⏳ API REST.
 - ⏳ Cliente web conectado a la API.
 - ⏳ Autenticación y autorización.
@@ -115,21 +118,59 @@ Evento de dominio
 Auditoría y notificaciones
 ```
 
+## Disponibilidad y consistencia
+
+La disponibilidad de un recurso se calcula combinando:
+
+```text
+Recurso activo
++ Horario de apertura
++ Sin bloqueos
++ Sin reservas solapadas
+= Recurso disponible
+```
+
+La protección contra solapamientos existe en dos niveles:
+
+### Dominio
+
+`BookingConflictPolicy` detecta conflictos antes de intentar guardar una reserva.
+
+### Base de datos
+
+PostgreSQL utiliza una restricción de exclusión GiST para impedir que dos reservas activas del mismo recurso ocupen intervalos solapados.
+
+Las reservas consecutivas están permitidas:
+
+```text
+10:00 - 11:00
+11:00 - 12:00
+```
+
+Las reservas activas solapadas se rechazan:
+
+```text
+10:00 - 11:00
+10:30 - 11:30
+```
+
+Las reservas canceladas no bloquean nuevas reservas.
+
 ## Decisiones técnicas
 
 - El dominio no depende de HTTP, Prisma ni NestJS.
 - Las reglas críticas viven en el dominio.
-- PostgreSQL será la fuente de verdad para las reservas.
-- Prisma se utiliza como adaptador de persistencia.
-- La base de datos también protegerá contra solapamientos.
+- PostgreSQL es la fuente de verdad para las reservas.
+- Prisma actúa como adaptador de persistencia.
+- Las fechas se almacenan normalizadas en UTC.
+- La base de datos también protege la integridad temporal.
 - Las operaciones críticas serán idempotentes.
-- Se utilizarán tests de dominio, integración y aceptación.
-- Las decisiones relevantes se documentarán mediante ADRs.
-- No se utilizarán microservicios sin una necesidad demostrable.
-- La disponibilidad se calcula combinando horarios, bloqueos y reservas existentes.
-- Los repositorios se abstraen mediante interfaces para mantener el dominio aislado.
+- Se utilizan tests de dominio, integración y aceptación.
+- Las decisiones relevantes se documentan mediante ADRs.
+- No se utilizan microservicios sin una necesidad demostrable.
+- Los repositorios se abstraen mediante interfaces.
 
-## Patrones previstos
+## Patrones utilizados y previstos
 
 - Value Objects.
 - Aggregate.
@@ -142,7 +183,7 @@ Auditoría y notificaciones
 - Optimistic Locking.
 - Adapter Pattern.
 
-Los patrones se incorporarán únicamente cuando resuelvan una necesidad concreta del dominio.
+Los patrones se incorporan únicamente cuando resuelven una necesidad concreta del dominio.
 
 ## Stack tecnológico
 
@@ -153,7 +194,6 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 - NestJS.
 - PostgreSQL 16.
 - Prisma 6.
-- Docker Compose.
 
 ### Frontend
 
@@ -172,6 +212,7 @@ Los patrones se incorporarán únicamente cuando resuelvan una necesidad concret
 ### Infraestructura
 
 - Docker.
+- Docker Compose.
 - PostgreSQL.
 - Migraciones reproducibles.
 - Despliegue mediante servicios con planes gratuitos.
@@ -200,13 +241,13 @@ pnpm install
 docker compose up -d
 ```
 
-Comprobar el estado del contenedor:
+Comprobar el contenedor:
 
 ```bash
 docker compose ps
 ```
 
-### Configurar variables de entorno
+### Variables de entorno
 
 Crea un archivo `.env` en la raíz:
 
@@ -227,6 +268,12 @@ pnpm --filter @reservia/api exec prisma generate
 ### Ejecutar migraciones
 
 ```bash
+pnpm --filter @reservia/api exec prisma migrate deploy
+```
+
+Durante el desarrollo también puedes utilizar:
+
+```bash
 pnpm --filter @reservia/api exec prisma migrate dev
 ```
 
@@ -236,11 +283,25 @@ pnpm --filter @reservia/api exec prisma migrate dev
 pnpm --filter @reservia/api exec prisma studio
 ```
 
-### Verificaciones
+### Tests normales
+
+```bash
+pnpm test
+```
+
+### Tests de integración
+
+En Windows CMD:
+
+```bat
+set RUN_INTEGRATION_TESTS=true
+pnpm test
+```
+
+### Comprobaciones de calidad
 
 ```bash
 pnpm lint
-pnpm test
 pnpm build
 ```
 
@@ -316,9 +377,11 @@ Las especificaciones incluyen:
 
 - ✅ Recursos reservables.
 - ✅ Reservas.
+- ✅ Estados de reserva.
 - ✅ Horarios de apertura.
 - ✅ Bloqueos de disponibilidad.
-- ✅ Cálculo inicial de disponibilidad.
+- ✅ Servicio de disponibilidad.
+- ✅ Detección de conflictos.
 - ✅ Caso de uso de creación de reservas.
 
 ### Persistencia
@@ -327,9 +390,12 @@ Las especificaciones incluyen:
 - ✅ Prisma.
 - ✅ Schema inicial.
 - ✅ Migración inicial.
-- ⏳ Repositorios persistentes.
-- ⏳ Transacciones.
-- ⏳ Restricciones contra solapamientos.
+- ✅ Repositorio persistente.
+- ✅ Tests de integración.
+- ✅ Restricción de solapamientos.
+- ⏳ Transacciones completas.
+- ⏳ Idempotencia persistente.
+- ⏳ Outbox Pattern.
 
 ### API
 
@@ -337,7 +403,9 @@ Las especificaciones incluyen:
 - ⏳ API REST.
 - ⏳ Validación de DTOs.
 - ⏳ OpenAPI.
-- ⏳ Autenticación y autorización.
+- ⏳ Autenticación.
+- ⏳ Autorización.
+- ⏳ Gestión de errores HTTP.
 
 ### Cliente
 
@@ -346,13 +414,14 @@ Las especificaciones incluyen:
 - ⏳ Flujo de reserva conectado.
 - ⏳ Panel de usuario.
 - ⏳ Panel de administración.
+- ⏳ Gestión de horarios y bloqueos.
 
 ### Producción
 
-- ⏳ Docker Compose completo.
 - ⏳ CI/CD completo.
 - ⏳ Observabilidad.
 - ⏳ Datos demo.
+- ⏳ Backups.
 - ⏳ Despliegue público.
 
 ## Proyecto de portfolio
