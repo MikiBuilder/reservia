@@ -1,0 +1,19 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE "Booking"
+ALTER COLUMN "startsAt"
+TYPE TIMESTAMP(3) WITHOUT TIME ZONE
+USING "startsAt" AT TIME ZONE 'UTC';
+
+ALTER TABLE "Booking"
+ALTER COLUMN "endsAt"
+TYPE TIMESTAMP(3) WITHOUT TIME ZONE
+USING "endsAt" AT TIME ZONE 'UTC';
+
+ALTER TABLE "Booking"
+ADD CONSTRAINT "Booking_no_active_overlap"
+EXCLUDE USING GIST (
+  "resourceId" WITH =,
+  tsrange("startsAt", "endsAt", '[)') WITH &&
+)
+WHERE ("status" IN ('PENDING', 'CONFIRMED'));
