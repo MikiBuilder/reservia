@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
+
 import { AvailabilityService } from '../src/modules/availability/domain/availability-service.js';
 import { BusinessHours } from '../src/modules/availability/domain/business-hours.js';
 import { DailySchedule } from '../src/modules/availability/domain/daily-schedule.js';
 import { DayOfWeek } from '../src/modules/availability/domain/day-of-week.js';
+
 import { BookingConflictPolicy } from '../src/modules/bookings/domain/booking-conflict.js';
 import { TimeRange } from '../src/modules/bookings/domain/time-range.js';
-import { Resource } from '../src/modules/resources/domain/resource.js';
 import { CreateBooking } from '../src/modules/bookings/application/create-booking.js';
+
+import { Resource } from '../src/modules/resources/domain/resource.js';
+
 import { InMemoryBookingRepository } from './in-memory-booking-repository.js';
+import { InMemoryOutboxRepository } from './in-memory-outbox-repository.js';
+import { InMemoryTransactionManager } from './in-memory-transaction-manager.js';
 
 const createPeriod = (): TimeRange =>
   TimeRange.create(
@@ -29,16 +35,31 @@ const createBusinessHours = (): BusinessHours =>
 
 const createUseCase = (
   repository: InMemoryBookingRepository,
-): CreateBooking =>
-  new CreateBooking(
+) => {
+  const outboxRepository = new InMemoryOutboxRepository();
+  const transactionManager = new InMemoryTransactionManager();
+
+  const useCase = new CreateBooking(
     repository,
+    outboxRepository,
+    transactionManager,
     new AvailabilityService(new BookingConflictPolicy()),
   );
+
+  return {
+    useCase,
+    outboxRepository,
+  };
+};
 
 describe('CreateBooking', () => {
   it('creates and confirms a valid booking', async () => {
     const repository = new InMemoryBookingRepository();
-    const createBooking = createUseCase(repository);
+
+    const {
+      useCase: createBooking,
+      outboxRepository,
+    } = createUseCase(repository);
 
     const booking = await createBooking.execute({
       id: 'booking-1',
@@ -51,11 +72,21 @@ describe('CreateBooking', () => {
 
     expect(booking.currentStatus).toBe('CONFIRMED');
     expect(repository.bookings).toHaveLength(1);
+
+    expect(outboxRepository.events).toHaveLength(1);
+    expect(outboxRepository.events[0]?.type).toBe(
+      'BookingCreated',
+    );
+    expect(outboxRepository.events[0]?.bookingId).toBe(
+      'booking-1',
+    );
   });
 
   it('rejects a booking when the resource is not available', async () => {
     const repository = new InMemoryBookingRepository();
-    const createBooking = createUseCase(repository);
+
+    const { useCase: createBooking } =
+      createUseCase(repository);
 
     await createBooking.execute({
       id: 'booking-1',
