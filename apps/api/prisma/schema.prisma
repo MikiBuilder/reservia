@@ -73,3 +73,24 @@ model BlackoutPeriod {
 
   @@index([resourceId, startsAt, endsAt])
 }
+
+enum OutboxMessageStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model OutboxMessage {
+  id          String              @id
+  eventType   String
+  aggregateId String
+  payload     Json
+  status      OutboxMessageStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  occurredAt  DateTime            @default(now())
+  processedAt DateTime?
+  lastError   String?
+
+  @@index([status, occurredAt])
+  @@index([aggregateId])
+}
