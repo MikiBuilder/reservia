@@ -1,3 +1,5 @@
-export interface TransactionManager {
-  run<T>(work: () => Promise<T>): Promise<T>;
+export interface TransactionManager<TContext = unknown> {
+  run<T>(
+    work: (context?: TContext) => Promise<T>,
+  ): Promise<T>;
 }
