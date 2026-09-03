@@ -1,12 +1,28 @@
-import { PrismaClient } from '@prisma/client';
+import {
+  Prisma,
+  PrismaClient,
+} from '@prisma/client';
+
+import type { PrismaTransactionClient } from './prisma-transaction-context.js';
+
 import { Booking } from '../domain/booking.js';
 import { TimeRange } from '../domain/time-range.js';
 import { BookingRepository } from '../application/booking-repository.js';
 
-export class PrismaBookingRepository implements BookingRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+type PrismaDatabaseClient =
+  | PrismaClient
+  | PrismaTransactionClient;
 
-  async findActiveByResourceId(resourceId: string): Promise<Booking[]> {
+export class PrismaBookingRepository
+  implements BookingRepository
+{
+  constructor(
+    private readonly prisma: PrismaDatabaseClient,
+  ) {}
+
+  async findActiveByResourceId(
+    resourceId: string,
+  ): Promise<Booking[]> {
     const records = await this.prisma.booking.findMany({
       where: {
         resourceId,
@@ -24,7 +40,10 @@ export class PrismaBookingRepository implements BookingRepository {
         id: record.id,
         resourceId: record.resourceId,
         customerId: record.customerId,
-        period: TimeRange.create(record.startsAt, record.endsAt),
+        period: TimeRange.create(
+          record.startsAt,
+          record.endsAt,
+        ),
         status: record.status,
         createdAt: record.createdAt,
       }),

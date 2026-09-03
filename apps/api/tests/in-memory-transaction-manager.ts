@@ -3,7 +3,9 @@ import { TransactionManager } from '../src/shared/application/transaction-manage
 export class InMemoryTransactionManager
   implements TransactionManager
 {
-  async run<T>(work: () => Promise<T>): Promise<T> {
+  async run<T>(
+    work: () => Promise<T>,
+  ): Promise<T> {
     return work();
   }
 }
