@@ -94,3 +94,25 @@ model OutboxMessage {
   @@index([status, occurredAt])
   @@index([aggregateId])
 }
+
+enum IdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model IdempotencyRecord {
+  id             String            @id
+  key            String            @unique
+  operation      String
+  requestHash    String
+  status         IdempotencyStatus @default(PROCESSING)
+  responseStatus Int?
+  responseBody   Json?
+  createdAt      DateTime          @default(now())
+  completedAt    DateTime?
+  expiresAt      DateTime
+
+  @@index([operation, key])
+  @@index([expiresAt])
+}
