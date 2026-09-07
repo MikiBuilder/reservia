@@ -14,3 +14,6 @@ export * from './modules/bookings/infrastructure/prisma-booking-repository.js';
 export * from './shared/application/transaction-manager.js';
 export * from './modules/bookings/application/booking-events.js';
 export * from './modules/bookings/application/outbox-repository.js';
+export * from './modules/bookings/application/idempotency-repository.js';
+export * from './modules/bookings/application/idempotency-service.js';
+export * from './modules/bookings/application/idempotent-create-booking.js';
