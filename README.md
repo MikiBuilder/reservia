@@ -47,6 +47,7 @@ El sistema está diseñado alrededor de un problema central:
 - Auditoría de cambios.
 - Prevención de reservas solapadas.
 - Idempotencia en operaciones críticas.
+- Procesamiento fiable de eventos mediante Outbox.
 - Panel de administración.
 - Métricas de ocupación.
 
@@ -72,8 +73,8 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Repositorio persistente con Prisma.
 - ✅ Tests de integración con PostgreSQL.
 - ✅ Restricción de solapamientos a nivel de PostgreSQL.
-- ⏳ Transacciones completas de aplicación.
-- ⏳ Idempotencia persistente.
+- ✅ Transacciones completas de aplicación.
+- ✅ Idempotencia persistente.
 - ⏳ API REST.
 - ⏳ Cliente web conectado a la API.
 - ⏳ Autenticación y autorización.
@@ -130,7 +131,7 @@ Recurso activo
 = Recurso disponible
 ```
 
-La protección contra solapamientos existe en dos niveles:
+La protección contra solapamientos existe en dos niveles.
 
 ### Dominio
 
@@ -156,6 +157,81 @@ Las reservas activas solapadas se rechazan:
 
 Las reservas canceladas no bloquean nuevas reservas.
 
+## Transacciones e idempotencia
+
+Las operaciones críticas de Reservia se ejecutan dentro de una transacción para garantizar la consistencia entre:
+
+- La reserva.
+- El evento Outbox.
+- El registro de idempotencia.
+
+El flujo transaccional es:
+
+```text
+BEGIN
+  Crear Booking
+  Crear OutboxMessage
+  Actualizar IdempotencyRecord
+COMMIT
+```
+
+Si alguna operación falla:
+
+```text
+ROLLBACK
+```
+
+De esta forma no puede quedar una reserva persistida sin su evento correspondiente.
+
+### Idempotencia
+
+Las peticiones de creación de reservas utilizan una clave de idempotencia:
+
+```http
+Idempotency-Key: 7e4c8f...
+```
+
+La primera petición:
+
+```text
+1. Registra la clave como PROCESSING.
+2. Comprueba la disponibilidad.
+3. Crea la reserva.
+4. Persiste el evento Outbox.
+5. Guarda la respuesta original.
+6. Marca la operación como COMPLETED.
+```
+
+Si la misma petición se repite:
+
+```text
+1. Se busca la clave existente.
+2. Se valida el hash de la petición.
+3. Se devuelve la respuesta original.
+4. No se crea una segunda reserva.
+```
+
+Si se reutiliza la misma clave con datos diferentes, la operación se rechaza:
+
+```text
+IDEMPOTENCY_KEY_REUSED
+```
+
+Los estados posibles de una operación idempotente son:
+
+```text
+PROCESSING
+COMPLETED
+FAILED
+```
+
+La idempotencia evita duplicados causados por:
+
+- Doble clic del usuario.
+- Reintentos automáticos.
+- Timeouts de red.
+- Reenvío de peticiones por un cliente HTTP.
+
 ## Decisiones técnicas
 
 - El dominio no depende de HTTP, Prisma ni NestJS.
@@ -164,7 +240,10 @@ Las reservas canceladas no bloquean nuevas reservas.
 - Prisma actúa como adaptador de persistencia.
 - Las fechas se almacenan normalizadas en UTC.
 - La base de datos también protege la integridad temporal.
-- Las operaciones críticas serán idempotentes.
+- Las operaciones críticas se ejecutan dentro de transacciones.
+- Los eventos Outbox se guardan junto con la reserva.
+- Las operaciones de creación utilizan idempotencia persistente.
+- Las respuestas de operaciones completadas pueden reutilizarse en reintentos.
 - Se utilizan tests de dominio, integración y aceptación.
 - Las decisiones relevantes se documentan mediante ADRs.
 - No se utilizan microservicios sin una necesidad demostrable.
@@ -393,9 +472,11 @@ Las especificaciones incluyen:
 - ✅ Repositorio persistente.
 - ✅ Tests de integración.
 - ✅ Restricción de solapamientos.
-- ⏳ Transacciones completas.
-- ⏳ Idempotencia persistente.
-- ⏳ Outbox Pattern.
+- ✅ Transacciones completas.
+- ✅ Idempotencia persistente.
+- ✅ Outbox Pattern.
+- ⏳ Procesamiento asíncrono de eventos Outbox.
+- ⏳ Limpieza de registros idempotentes expirados.
 
 ### API
 
