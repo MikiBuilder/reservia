@@ -39,6 +39,24 @@ export class Resource {
     );
   }
 
+static rehydrate(params: {
+  id: string;
+  name: string;
+  description: string;
+  capacity: number;
+  status: ResourceStatus;
+  createdAt: Date;
+}): Resource {
+  return new Resource(
+    params.id,
+    params.name,
+    params.description,
+    params.capacity,
+    params.status,
+    params.createdAt,
+  );
+}
+
   activate(): void {
     this.status = 'ACTIVE';
   }
