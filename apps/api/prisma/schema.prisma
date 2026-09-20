@@ -28,27 +28,52 @@ enum BlackoutReason {
   TEMPORARY_CLOSURE
 }
 
-model Resource {
-  id          String         @id
-  name        String
-  description String         @default("")
-  capacity    Int
-  status      ResourceStatus @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+enum OutboxMessageStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
 
-  bookings  Booking[]
-  blackouts BlackoutPeriod[]
+enum IdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model Resource {
+  id             String                @id
+  name           String
+  description    String                @default("")
+  capacity       Int
+  status         ResourceStatus        @default(ACTIVE)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  bookings       Booking[]
+  blackouts      BlackoutPeriod[]
+  businessHours ResourceBusinessHours?
 
   @@index([status])
+}
+
+model ResourceBusinessHours {
+  id         String   @id
+  resourceId String   @unique
+  schedule   Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@index([resourceId])
 }
 
 model Booking {
   id         String        @id
   resourceId String
   customerId String
-  startsAt   DateTime @db.Timestamp(3)
-  endsAt     DateTime @db.Timestamp(3)
+  startsAt   DateTime      @db.Timestamp(3)
+  endsAt     DateTime      @db.Timestamp(3)
   status     BookingStatus @default(PENDING)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
@@ -74,12 +99,6 @@ model BlackoutPeriod {
   @@index([resourceId, startsAt, endsAt])
 }
 
-enum OutboxMessageStatus {
-  PENDING
-  PROCESSED
-  FAILED
-}
-
 model OutboxMessage {
   id          String              @id
   eventType   String
@@ -93,12 +112,6 @@ model OutboxMessage {
 
   @@index([status, occurredAt])
   @@index([aggregateId])
-}
-
-enum IdempotencyStatus {
-  PROCESSING
-  COMPLETED
-  FAILED
 }
 
 model IdempotencyRecord {
