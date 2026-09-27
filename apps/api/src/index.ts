@@ -18,3 +18,7 @@ export * from './modules/bookings/application/idempotency-repository.js';
 export * from './modules/bookings/application/idempotency-service.js';
 export * from './modules/bookings/application/idempotent-create-booking.js';
 export * from './modules/bookings/infrastructure/prisma-idempotency-repository.js';
+export * from './modules/availability/application/business-hours-repository.js';
+export * from './modules/availability/application/blackout-repository.js';
+export * from './modules/availability/infrastructure/prisma-business-hours-repository.js';
+export * from './modules/availability/infrastructure/prisma-blackout-repository.js';
