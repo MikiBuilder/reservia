@@ -28,28 +28,26 @@ Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. La im
 
 ## Visión
 
-Reservia permitirá a equipos y profesionales descubrir, reservar y administrar espacios de trabajo por horas.
+Reservia permite a equipos y profesionales descubrir, reservar y administrar espacios de trabajo por horas.
 
 El sistema está diseñado alrededor de un problema central:
 
 > Garantizar que la disponibilidad de los recursos sea correcta incluso cuando varias personas intentan reservar simultáneamente.
 
-## Funcionalidades previstas
+## Funcionalidades
 
 - Consulta de espacios disponibles.
+- Consulta de recursos.
 - Reservas por franjas horarias.
 - Gestión de salas, despachos y puestos.
 - Horarios de apertura.
-- Bloqueos de calendario.
-- Reservas recurrentes.
-- Reglas de cancelación.
-- Gestión de usuarios y roles.
-- Auditoría de cambios.
+- Bloqueos de disponibilidad.
 - Prevención de reservas solapadas.
 - Idempotencia en operaciones críticas.
-- Procesamiento fiable de eventos mediante Outbox.
-- Panel de administración.
-- Métricas de ocupación.
+- Eventos Outbox.
+- Transacciones de aplicación.
+- Panel de administración previsto.
+- Métricas de ocupación previstas.
 
 ## Estado actual
 
@@ -68,21 +66,30 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Caso de uso de creación de reservas.
 - ✅ Schema de base de datos con Prisma.
 - ✅ PostgreSQL mediante Docker Compose.
-- ✅ Migración inicial.
+- ✅ Migraciones reproducibles.
 - ✅ Prisma Client generado.
-- ✅ Repositorio persistente con Prisma.
+- ✅ Repositorios persistentes con Prisma.
 - ✅ Tests de integración con PostgreSQL.
 - ✅ Restricción de solapamientos a nivel de PostgreSQL.
 - ✅ Transacciones completas de aplicación.
 - ✅ Idempotencia persistente.
-- ⏳ API REST.
-- ⏳ Cliente web conectado a la API.
+- ✅ Outbox Pattern.
+- ✅ API REST base con NestJS.
+- ✅ Endpoint `GET /api/health`.
+- ✅ Endpoint `GET /api/resources`.
+- ✅ Endpoint `POST /api/bookings`.
+- ✅ Validación de DTOs.
+- ✅ Validación mediante `Idempotency-Key`.
+- ⏳ Procesamiento asíncrono de eventos Outbox.
+- ⏳ Limpieza de registros idempotentes expirados.
+- ⏳ OpenAPI.
 - ⏳ Autenticación y autorización.
+- ⏳ Cliente web conectado a la API.
 - ⏳ Despliegue público.
 
 ## Arquitectura
 
-Reservia comienza como un **monolito modular**. Esta decisión permite mantener una arquitectura clara sin introducir la complejidad operacional de los microservicios demasiado pronto.
+Reservia utiliza un **monolito modular**. Esta decisión permite mantener una arquitectura clara sin introducir la complejidad operacional de los microservicios demasiado pronto.
 
 La lógica está separada en capas:
 
@@ -91,7 +98,7 @@ La lógica está separada en capas:
 - **Infraestructura**: persistencia y servicios externos.
 - **Presentación**: API HTTP y cliente web.
 
-### Módulos previstos
+### Módulos
 
 - `identity`: usuarios, roles y permisos.
 - `resources`: espacios y recursos reservables.
@@ -101,27 +108,35 @@ La lógica está separada en capas:
 - `audit`: trazabilidad de cambios.
 - `reporting`: métricas y estadísticas.
 
-### Flujo previsto
+### Flujo de una reserva
 
 ```text
-Petición HTTP
-     ↓
-Validación de entrada
-     ↓
-Caso de uso
-     ↓
-Reglas de dominio
-     ↓
-Transacción de persistencia
-     ↓
-Evento de dominio
-     ↓
-Auditoría y notificaciones
+POST /api/bookings
+        ↓
+Validación del DTO
+        ↓
+Validación de Idempotency-Key
+        ↓
+Carga del recurso
+        ↓
+Carga del horario
+        ↓
+Carga de bloqueos
+        ↓
+AvailabilityService
+        ↓
+CreateBooking
+        ↓
+Transacción PostgreSQL
+        ↓
+Booking + Outbox + IdempotencyRecord
+        ↓
+Respuesta HTTP
 ```
 
 ## Disponibilidad y consistencia
 
-La disponibilidad de un recurso se calcula combinando:
+La disponibilidad se calcula combinando:
 
 ```text
 Recurso activo
@@ -135,7 +150,7 @@ La protección contra solapamientos existe en dos niveles.
 
 ### Dominio
 
-`BookingConflictPolicy` detecta conflictos antes de intentar guardar una reserva.
+`BookingConflictPolicy` detecta conflictos antes de guardar una reserva.
 
 ### Base de datos
 
@@ -159,7 +174,7 @@ Las reservas canceladas no bloquean nuevas reservas.
 
 ## Transacciones e idempotencia
 
-Las operaciones críticas de Reservia se ejecutan dentro de una transacción para garantizar la consistencia entre:
+Las operaciones críticas se ejecutan dentro de una transacción para garantizar la consistencia entre:
 
 - La reserva.
 - El evento Outbox.
@@ -175,23 +190,23 @@ BEGIN
 COMMIT
 ```
 
-Si alguna operación falla:
+Si una operación falla:
 
 ```text
 ROLLBACK
 ```
 
-De esta forma no puede quedar una reserva persistida sin su evento correspondiente.
+No debe quedar una reserva persistida sin su evento correspondiente.
 
 ### Idempotencia
 
-Las peticiones de creación de reservas utilizan una clave de idempotencia:
+Las peticiones de creación utilizan:
 
 ```http
-Idempotency-Key: 7e4c8f...
+Idempotency-Key: booking-request-001
 ```
 
-La primera petición:
+Primera petición:
 
 ```text
 1. Registra la clave como PROCESSING.
@@ -202,22 +217,22 @@ La primera petición:
 6. Marca la operación como COMPLETED.
 ```
 
-Si la misma petición se repite:
+Repetición de la misma petición:
 
 ```text
-1. Se busca la clave existente.
-2. Se valida el hash de la petición.
-3. Se devuelve la respuesta original.
-4. No se crea una segunda reserva.
+1. Busca la clave existente.
+2. Comprueba el hash.
+3. Devuelve la respuesta original.
+4. No crea una segunda reserva.
 ```
 
-Si se reutiliza la misma clave con datos diferentes, la operación se rechaza:
+Si se reutiliza la clave con datos diferentes:
 
 ```text
 IDEMPOTENCY_KEY_REUSED
 ```
 
-Los estados posibles de una operación idempotente son:
+Estados posibles:
 
 ```text
 PROCESSING
@@ -225,12 +240,108 @@ COMPLETED
 FAILED
 ```
 
-La idempotencia evita duplicados causados por:
+## API REST
 
-- Doble clic del usuario.
-- Reintentos automáticos.
-- Timeouts de red.
-- Reenvío de peticiones por un cliente HTTP.
+### Health check
+
+```http
+GET /api/health
+```
+
+Ejemplo:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+Respuesta:
+
+```json
+{
+  "status": "ok",
+  "service": "reservia-api",
+  "timestamp": "2026-09-27T15:17:07.742Z"
+}
+```
+
+### Listar recursos
+
+```http
+GET /api/resources
+```
+
+Respuesta:
+
+```json
+{
+  "data": [
+    {
+      "id": "demo-resource-1",
+      "name": "Sala Mediterránea",
+      "description": "Sala luminosa para reuniones",
+      "capacity": 8,
+      "status": "ACTIVE",
+      "createdAt": "2026-09-17T20:08:59.125Z"
+    }
+  ]
+}
+```
+
+### Crear una reserva
+
+```http
+POST /api/bookings
+```
+
+Headers:
+
+```http
+Content-Type: application/json
+Idempotency-Key: booking-api-request-001
+```
+
+Body:
+
+```json
+{
+  "id": "booking-api-001",
+  "resourceId": "demo-resource-1",
+  "customerId": "customer-001",
+  "startsAt": "2026-08-31T10:00:00.000Z",
+  "endsAt": "2026-08-31T11:00:00.000Z"
+}
+```
+
+Ejemplo desde Windows CMD:
+
+```bat
+curl -X POST http://localhost:3000/api/bookings -H "Content-Type: application/json" -H "Idempotency-Key: booking-api-request-001" -d "{\"id\":\"booking-api-001\",\"resourceId\":\"demo-resource-1\",\"customerId\":\"customer-001\",\"startsAt\":\"2026-08-31T10:00:00.000Z\",\"endsAt\":\"2026-08-31T11:00:00.000Z\"}"
+```
+
+Respuesta esperada:
+
+```json
+{
+  "data": {
+    "id": "booking-api-001",
+    "resourceId": "demo-resource-1",
+    "customerId": "customer-001",
+    "startsAt": "2026-08-31T10:00:00.000Z",
+    "endsAt": "2026-08-31T11:00:00.000Z",
+    "status": "CONFIRMED",
+    "createdAt": "2026-09-27T15:33:38.220Z"
+  }
+}
+```
+
+Respuestas principales:
+
+```text
+201 Created
+400 Bad Request
+404 Not Found
+409 Conflict
+```
 
 ## Decisiones técnicas
 
@@ -239,15 +350,13 @@ La idempotencia evita duplicados causados por:
 - PostgreSQL es la fuente de verdad para las reservas.
 - Prisma actúa como adaptador de persistencia.
 - Las fechas se almacenan normalizadas en UTC.
-- La base de datos también protege la integridad temporal.
-- Las operaciones críticas se ejecutan dentro de transacciones.
+- La base de datos protege la integridad temporal.
+- Las operaciones críticas utilizan transacciones.
 - Los eventos Outbox se guardan junto con la reserva.
 - Las operaciones de creación utilizan idempotencia persistente.
-- Las respuestas de operaciones completadas pueden reutilizarse en reintentos.
-- Se utilizan tests de dominio, integración y aceptación.
-- Las decisiones relevantes se documentan mediante ADRs.
-- No se utilizan microservicios sin una necesidad demostrable.
 - Los repositorios se abstraen mediante interfaces.
+- No se utilizan microservicios sin una necesidad demostrable.
+- Se documentan las decisiones relevantes mediante ADRs.
 
 ## Patrones utilizados y previstos
 
@@ -262,7 +371,7 @@ La idempotencia evita duplicados causados por:
 - Optimistic Locking.
 - Adapter Pattern.
 
-Los patrones se incorporan únicamente cuando resuelven una necesidad concreta del dominio.
+Los patrones se incorporan únicamente cuando resuelven una necesidad concreta.
 
 ## Stack tecnológico
 
@@ -295,7 +404,7 @@ Los patrones se incorporan únicamente cuando resuelven una necesidad concreta d
 - PostgreSQL.
 - Migraciones reproducibles.
 - Despliegue mediante servicios con planes gratuitos.
-- Datos demo para facilitar la evaluación del proyecto.
+- Datos demo.
 
 ## Desarrollo local
 
@@ -326,6 +435,12 @@ Comprobar el contenedor:
 docker compose ps
 ```
 
+Debe aparecer:
+
+```text
+reservia-postgres ... healthy
+```
+
 ### Variables de entorno
 
 Crea un archivo `.env` en la raíz:
@@ -336,30 +451,43 @@ DATABASE_URL=postgresql://reservia:reservia@localhost:5432/reservia
 PORT=3000
 ```
 
-No subas el archivo `.env` al repositorio.
+No subas `.env` al repositorio.
 
-### Generar Prisma Client
+### Prisma Client
 
 ```bash
 pnpm --filter @reservia/api exec prisma generate
 ```
 
-### Ejecutar migraciones
+### Migraciones
 
 ```bash
 pnpm --filter @reservia/api exec prisma migrate deploy
 ```
 
-Durante el desarrollo también puedes utilizar:
+Durante el desarrollo:
 
 ```bash
 pnpm --filter @reservia/api exec prisma migrate dev
 ```
 
-### Abrir Prisma Studio
+### Prisma Studio
 
 ```bash
 pnpm --filter @reservia/api exec prisma studio
+```
+
+### Arrancar la API
+
+```bash
+pnpm build
+pnpm --filter @reservia/api start
+```
+
+La API estará disponible en:
+
+```text
+http://localhost:3000
 ```
 
 ### Tests normales
@@ -377,14 +505,14 @@ set RUN_INTEGRATION_TESTS=true
 pnpm test
 ```
 
-### Comprobaciones de calidad
+### Calidad y compilación
 
 ```bash
 pnpm lint
 pnpm build
 ```
 
-### Ejecutar la demo visual
+### Demo visual
 
 ```bash
 python3 -m http.server 4173
@@ -406,7 +534,11 @@ reservia/
 │       │   ├── migrations/
 │       │   └── schema.prisma
 │       ├── src/
+│       │   ├── database/
 │       │   ├── modules/
+│       │   ├── shared/
+│       │   ├── app.module.ts
+│       │   ├── main.ts
 │       │   └── index.ts
 │       └── tests/
 ├── assets/
@@ -468,11 +600,11 @@ Las especificaciones incluyen:
 - ✅ PostgreSQL local.
 - ✅ Prisma.
 - ✅ Schema inicial.
-- ✅ Migración inicial.
-- ✅ Repositorio persistente.
+- ✅ Migraciones.
+- ✅ Repositorios persistentes.
 - ✅ Tests de integración.
 - ✅ Restricción de solapamientos.
-- ✅ Transacciones completas.
+- ✅ Transacciones.
 - ✅ Idempotencia persistente.
 - ✅ Outbox Pattern.
 - ⏳ Procesamiento asíncrono de eventos Outbox.
@@ -480,13 +612,17 @@ Las especificaciones incluyen:
 
 ### API
 
-- ⏳ NestJS.
-- ⏳ API REST.
-- ⏳ Validación de DTOs.
+- ✅ NestJS.
+- ✅ API REST base.
+- ✅ `GET /api/health`.
+- ✅ `GET /api/resources`.
+- ✅ `POST /api/bookings`.
+- ✅ Validación de DTOs.
+- ✅ Validación mediante `Idempotency-Key`.
 - ⏳ OpenAPI.
 - ⏳ Autenticación.
 - ⏳ Autorización.
-- ⏳ Gestión de errores HTTP.
+- ⏳ Gestión avanzada de errores HTTP.
 
 ### Cliente
 
@@ -501,7 +637,7 @@ Las especificaciones incluyen:
 
 - ⏳ CI/CD completo.
 - ⏳ Observabilidad.
-- ⏳ Datos demo.
+- ⏳ Datos demo automatizados.
 - ⏳ Backups.
 - ⏳ Despliegue público.
 
