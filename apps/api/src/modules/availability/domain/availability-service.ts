@@ -5,7 +5,9 @@ import { Resource } from '../../resources/domain/resource.js';
 import { BusinessHours } from './business-hours.js';
 import { BlackoutPeriod } from './blackout-period.js';
 import { DayOfWeek } from './day-of-week.js';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class AvailabilityService {
   constructor(
     private readonly bookingConflictPolicy: BookingConflictPolicy,
