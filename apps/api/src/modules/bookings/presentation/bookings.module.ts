@@ -3,8 +3,6 @@ import { Module } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service.js';
 
 import { AvailabilityService } from '../../availability/domain/availability-service.js';
-import { BookingConflictPolicy } from '../domain/booking-conflict.js';
-
 import { BusinessHoursRepository } from '../../availability/application/business-hours-repository.js';
 import { BlackoutRepository } from '../../availability/application/blackout-repository.js';
 import { PrismaBusinessHoursRepository } from '../../availability/infrastructure/prisma-business-hours-repository.js';
@@ -13,6 +11,7 @@ import { PrismaBlackoutRepository } from '../../availability/infrastructure/pris
 import { ResourceRepository } from '../../resources/application/resource-repository.js';
 import { PrismaResourceRepository } from '../../resources/infrastructure/prisma-resource-repository.js';
 
+import { BookingConflictPolicy } from '../domain/booking-conflict.js';
 import { BookingRepository } from '../application/booking-repository.js';
 import { CreateBooking } from '../application/create-booking.js';
 import { IdempotentCreateBooking } from '../application/idempotent-create-booking.js';
@@ -31,6 +30,7 @@ import { BookingsController } from './bookings.controller.js';
   controllers: [BookingsController],
   providers: [
     PrismaService,
+
     AvailabilityService,
     BookingConflictPolicy,
     PrismaTransactionManager,
@@ -112,7 +112,7 @@ import { BookingsController } from './bookings.controller.js';
     },
 
     {
-      provide: IdempotentCreateBooking,
+      provide: 'IdempotentCreateBooking',
       useFactory: (
         createBooking: CreateBooking,
         idempotencyRepository: IdempotencyRepository,
