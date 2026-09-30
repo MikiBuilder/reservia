@@ -1,8 +1,10 @@
 import {
   Controller,
   Get,
+  Inject,
   Param,
 } from '@nestjs/common';
+
 import { ApiTags } from '@nestjs/swagger';
 
 import { GetResource } from '../application/get-resource.js';
@@ -12,7 +14,10 @@ import { ListResources } from '../application/list-resources.js';
 @Controller('resources')
 export class ResourcesController {
   constructor(
+    @Inject(ListResources)
     private readonly listResources: ListResources,
+
+    @Inject(GetResource)
     private readonly getResource: GetResource,
   ) {}
 
