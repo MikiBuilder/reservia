@@ -7,17 +7,25 @@ import {
   NotFoundException,
   Post,
 } from '@nestjs/common';
+
+import {
+  ApiHeader,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+
 import { createHash } from 'node:crypto';
 
 import { BusinessHoursRepository } from '../../availability/application/business-hours-repository.js';
 import { BlackoutRepository } from '../../availability/application/blackout-repository.js';
-import { TimeRange } from '../domain/time-range.js';
-
 import { ResourceRepository } from '../../resources/application/resource-repository.js';
 
 import { IdempotentCreateBooking } from '../application/idempotent-create-booking.js';
+import { TimeRange } from '../domain/time-range.js';
+
 import { CreateBookingDto } from './create-booking.dto.js';
 
+@ApiTags('bookings')
 @Controller('bookings')
 export class BookingsController {
   constructor(
@@ -33,6 +41,29 @@ export class BookingsController {
     private readonly blackoutRepository: BlackoutRepository,
   ) {}
 
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: true,
+    description:
+      'Clave única para evitar reservas duplicadas.',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Reserva creada correctamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos de entrada inválidos.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Recurso no encontrado.',
+  })
+  @ApiResponse({
+    status: 409,
+    description:
+      'Recurso no disponible o clave de idempotencia reutilizada.',
+  })
   @Post()
   async create(
     @Body() body: CreateBookingDto,
@@ -128,6 +159,24 @@ export class BookingsController {
       ) {
         throw new ConflictException(
           'Idempotency key was already used with different data',
+        );
+      }
+
+      if (
+        error instanceof Error &&
+        error.message === 'IDEMPOTENCY_REQUEST_IN_PROGRESS'
+      ) {
+        throw new ConflictException(
+          'An identical request is already being processed',
+        );
+      }
+
+      if (
+        error instanceof Error &&
+        error.message === 'IDEMPOTENCY_PREVIOUS_REQUEST_FAILED'
+      ) {
+        throw new ConflictException(
+          'The previous request with this key failed',
         );
       }
 
