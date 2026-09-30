@@ -29,6 +29,7 @@ import { CreateBookingDto } from './create-booking.dto.js';
 @Controller('bookings')
 export class BookingsController {
   constructor(
+    @Inject('IdempotentCreateBooking')
     private readonly createBooking: IdempotentCreateBooking,
 
     @Inject('ResourceRepository')
