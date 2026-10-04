@@ -1,15 +1,21 @@
+import {
+  Inject,
+  Injectable,
+} from '@nestjs/common';
+
 import { Booking } from '../../bookings/domain/booking.js';
 import { BookingConflictPolicy } from '../../bookings/domain/booking-conflict.js';
 import { TimeRange } from '../../bookings/domain/time-range.js';
 import { Resource } from '../../resources/domain/resource.js';
+
 import { BusinessHours } from './business-hours.js';
 import { BlackoutPeriod } from './blackout-period.js';
 import { DayOfWeek } from './day-of-week.js';
-import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AvailabilityService {
   constructor(
+    @Inject(BookingConflictPolicy)
     private readonly bookingConflictPolicy: BookingConflictPolicy,
   ) {}
 
@@ -24,27 +30,37 @@ export class AvailabilityService {
       return false;
     }
 
-    const day = AvailabilityService.dayOfWeekFromDate(
-      params.period.startsAt,
-    );
+    const day =
+      AvailabilityService.dayOfWeekFromDate(
+        params.period.startsAt,
+      );
 
-    if (!params.businessHours.isAvailableAt(
-      day,
-      AvailabilityService.formatTime(params.period.startsAt),
-    )) {
+    if (
+      !params.businessHours.isAvailableAt(
+        day,
+        AvailabilityService.formatTime(
+          params.period.startsAt,
+        ),
+      )
+    ) {
       return false;
     }
 
-    if (!params.businessHours.isAvailableAt(
-      day,
-      AvailabilityService.formatTime(params.period.endsAt),
-    )) {
+    if (
+      !params.businessHours.isAvailableAt(
+        day,
+        AvailabilityService.formatTime(
+          params.period.endsAt,
+        ),
+      )
+    ) {
       return false;
     }
 
-    const hasBlackout = params.blackouts.some((blackout) =>
-      blackout.resourceId === params.resource.id &&
-      blackout.affects(params.period),
+    const hasBlackout = params.blackouts.some(
+      (blackout) =>
+        blackout.resourceId === params.resource.id &&
+        blackout.affects(params.period),
     );
 
     if (hasBlackout) {
@@ -60,7 +76,10 @@ export class AvailabilityService {
 
       return true;
     } catch (error) {
-      if (error instanceof Error && error.message === 'BOOKING_CONFLICT') {
+      if (
+        error instanceof Error &&
+        error.message === 'BOOKING_CONFLICT'
+      ) {
         return false;
       }
 
@@ -68,25 +87,29 @@ export class AvailabilityService {
     }
   }
 
-private static dayOfWeekFromDate(date: Date): DayOfWeek {
-  const days: DayOfWeek[] = [
-    DayOfWeek.SUNDAY,
-    DayOfWeek.MONDAY,
-    DayOfWeek.TUESDAY,
-    DayOfWeek.WEDNESDAY,
-    DayOfWeek.THURSDAY,
-    DayOfWeek.FRIDAY,
-    DayOfWeek.SATURDAY,
-  ];
+  private static dayOfWeekFromDate(
+    date: Date,
+  ): DayOfWeek {
+    const days: DayOfWeek[] = [
+      DayOfWeek.SUNDAY,
+      DayOfWeek.MONDAY,
+      DayOfWeek.TUESDAY,
+      DayOfWeek.WEDNESDAY,
+      DayOfWeek.THURSDAY,
+      DayOfWeek.FRIDAY,
+      DayOfWeek.SATURDAY,
+    ];
 
-  const day = days[date.getUTCDay()];
+    const day = days[date.getUTCDay()];
 
-  if (!day) {
-    throw new Error('AVAILABILITY_INVALID_DATE');
+    if (!day) {
+      throw new Error(
+        'AVAILABILITY_INVALID_DATE',
+      );
+    }
+
+    return day;
   }
-
-  return day;
-}
 
   private static formatTime(date: Date): string {
     return date.toISOString().slice(11, 16);
