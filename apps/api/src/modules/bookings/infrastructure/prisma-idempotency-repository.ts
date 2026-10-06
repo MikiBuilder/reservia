@@ -94,6 +94,39 @@ export class PrismaIdempotencyRepository
     });
   }
 
+async deleteExpired(
+  now: Date,
+  limit: number,
+): Promise<number> {
+  const expired =
+    await this.prisma.idempotencyRecord.findMany({
+      where: {
+        expiresAt: {
+          lt: now,
+        },
+      },
+      select: {
+        id: true,
+      },
+      take: limit,
+    });
+
+  if (expired.length === 0) {
+    return 0;
+  }
+
+  const result =
+    await this.prisma.idempotencyRecord.deleteMany({
+      where: {
+        id: {
+          in: expired.map((record) => record.id),
+        },
+      },
+    });
+
+  return result.count;
+}
+
   private toDomain(record: {
     id: string;
     key: string;

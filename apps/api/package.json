@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "start:dev": "tsx watch src/main.ts",
     "outbox:process": "tsx src/commands/process-outbox.ts",
+    "idempotency:cleanup": "tsx src/commands/cleanup-idempotency.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit -p tsconfig.json"
