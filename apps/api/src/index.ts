@@ -22,3 +22,6 @@ export * from './modules/availability/application/business-hours-repository.js';
 export * from './modules/availability/application/blackout-repository.js';
 export * from './modules/availability/infrastructure/prisma-business-hours-repository.js';
 export * from './modules/availability/infrastructure/prisma-blackout-repository.js';
+export * from './modules/bookings/application/outbox-event-processor.js';
+export * from './modules/bookings/application/process-outbox-messages.js';
+export * from './modules/bookings/application/booking-created-event-processor.js';
