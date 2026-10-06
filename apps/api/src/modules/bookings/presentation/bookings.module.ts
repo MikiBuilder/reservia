@@ -26,6 +26,9 @@ import { PrismaTransactionManager } from '../infrastructure/prisma-transaction-m
 
 import { BookingsController } from './bookings.controller.js';
 
+import { BookingCreatedEventProcessor } from '../application/booking-created-event-processor.js';
+import { ProcessOutboxMessages } from '../application/process-outbox-messages.js';
+
 @Module({
   controllers: [BookingsController],
   providers: [
@@ -129,6 +132,25 @@ import { BookingsController } from './bookings.controller.js';
         'IdempotencyRepository',
       ],
     },
+
+BookingCreatedEventProcessor,
+
+{
+  provide: ProcessOutboxMessages,
+  useFactory: (
+    outboxRepository: OutboxRepository,
+    eventProcessor: BookingCreatedEventProcessor,
+  ) =>
+    new ProcessOutboxMessages(
+      outboxRepository,
+      eventProcessor,
+    ),
+  inject: [
+    'OutboxRepository',
+    BookingCreatedEventProcessor,
+  ],
+},
+
   ],
 })
 export class BookingsModule {}
