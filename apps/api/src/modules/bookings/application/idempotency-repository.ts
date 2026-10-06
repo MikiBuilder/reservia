@@ -37,4 +37,9 @@ export interface IdempotencyRepository {
     id: string;
     error: string;
   }): Promise<void>;
+
+  deleteExpired(
+    now: Date,
+    limit: number,
+  ): Promise<number>;
 }

@@ -83,4 +83,26 @@ export class InMemoryIdempotencyRepository
       error: params.error,
     };
   }
+
+async deleteExpired(
+  now: Date,
+  limit: number,
+): Promise<number> {
+  const expired = this.records
+    .filter(
+      (record) => record.expiresAt < now,
+    )
+    .slice(0, limit);
+
+  for (const record of expired) {
+    const index = this.records.indexOf(record);
+
+    if (index >= 0) {
+      this.records.splice(index, 1);
+    }
+  }
+
+  return expired.length;
+}
+
 }
