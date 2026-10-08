@@ -22,9 +22,10 @@
 
 ## Estado del proyecto
 
-🚧 **En desarrollo activo**
+🚧 **Producto en desarrollo activo**
 
-Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. La implementación comienza por el dominio y las reglas de negocio antes de incorporar persistencia, API y frontend.
+Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. El núcleo transaccional y la API REST ya están implementados. Las próximas fases estarán centradas en autenticación, experiencia de usuario, automatización de procesos y despliegue.
+
 
 ## Visión
 
@@ -84,8 +85,9 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Documentación OpenAPI.
 - ✅ Swagger UI disponible en `/docs`.
 - ✅ Tests E2E de la API REST.
-- ⏳ Procesamiento asíncrono de eventos Outbox.
-- ⏳ Limpieza de registros idempotentes expirados.
+- ✅ Procesamiento de eventos Outbox mediante comando CLI.
+- ✅ Limpieza de registros idempotentes expirados mediante comando CLI.
+- ⏳ Automatización de jobs en producción.
 - ⏳ Autenticación y autorización.
 - ⏳ Cliente web conectado a la API.
 - ⏳ Despliegue público.
@@ -243,16 +245,32 @@ COMPLETED
 FAILED
 ```
 
+## Procesos de background
+
+Los procesos que no forman parte del ciclo HTTP se ejecutan mediante comandos CLI independientes.
+
+### Procesar eventos Outbox
+
+```bash
+pnpm --filter @reservia/api outbox:process
+```
+
+### Limpiar registros idempotentes expirados
+
+```bash
+pnpm --filter @reservia/api idempotency:cleanup
+```
+
+En producción, estos comandos se ejecutarán mediante un scheduler externo o un worker independiente.
+
+La API HTTP no ejecuta directamente estos procesos para evitar mezclar responsabilidades y prevenir ejecuciones duplicadas cuando existan varias instancias.
+
 ## API REST
 
 ### Health check
 
 ```http
 GET /api/health
-```
-
-```bash
-curl http://localhost:3000/api/health
 ```
 
 ### Listar recursos
@@ -292,12 +310,6 @@ Body:
 }
 ```
 
-Ejemplo desde Windows CMD:
-
-```bat
-curl -X POST http://localhost:3000/api/bookings -H "Content-Type: application/json" -H "Idempotency-Key: booking-request-001" -d "{\"id\":\"booking-api-001\",\"resourceId\":\"demo-resource-1\",\"customerId\":\"customer-001\",\"startsAt\":\"2026-08-31T10:00:00.000Z\",\"endsAt\":\"2026-08-31T11:00:00.000Z\"}"
-```
-
 Respuestas principales:
 
 ```text
@@ -321,7 +333,7 @@ La documentación incluye:
 - Recursos.
 - Detalle de recursos.
 - Creación de reservas.
-- Validación del header `Idempotency-Key`.
+- Header `Idempotency-Key`.
 - Ejemplos de DTOs.
 - Respuestas HTTP documentadas.
 
@@ -361,6 +373,7 @@ pnpm test
 - Los repositorios se abstraen mediante interfaces.
 - No se utilizan microservicios sin una necesidad demostrable.
 - Las decisiones relevantes se documentan mediante ADRs.
+- Los procesos de background se ejecutan mediante comandos independientes.
 
 ## Patrones utilizados y previstos
 
@@ -516,6 +529,13 @@ http://localhost:3000
 http://localhost:3000/docs
 ```
 
+### Ejecutar comandos de mantenimiento
+
+```bash
+pnpm --filter @reservia/api outbox:process
+pnpm --filter @reservia/api idempotency:cleanup
+```
+
 ### Ejecutar la demo visual
 
 ```bash
@@ -538,6 +558,7 @@ reservia/
 │       │   ├── migrations/
 │       │   └── schema.prisma
 │       ├── src/
+│       │   ├── commands/
 │       │   ├── database/
 │       │   ├── modules/
 │       │   ├── shared/
@@ -611,8 +632,9 @@ Las especificaciones incluyen:
 - ✅ Transacciones completas.
 - ✅ Idempotencia persistente.
 - ✅ Outbox Pattern.
-- ⏳ Procesamiento asíncrono de eventos Outbox.
-- ⏳ Limpieza de registros idempotentes expirados.
+- ✅ Procesamiento Outbox mediante comando CLI.
+- ✅ Limpieza de registros idempotentes expirados mediante comando CLI.
+- ⏳ Scheduler externo en producción.
 
 ### API
 
@@ -642,17 +664,34 @@ Las especificaciones incluyen:
 
 ### Producción
 
+- ⏳ Scheduler externo.
 - ⏳ CI/CD completo.
 - ⏳ Observabilidad.
 - ⏳ Datos demo automatizados.
 - ⏳ Backups.
 - ⏳ Despliegue público.
 
-## Proyecto de portfolio
+## Proyecto en desarrollo
 
-Reservia es un proyecto ficticio creado con fines educativos y de portfolio.
+Reservia es una plataforma en desarrollo para la gestión de reservas y disponibilidad de espacios profesionales.
 
-No utiliza datos reales, no procesa pagos reales y no representa una empresa o servicio comercial existente.
+El proyecto se está construyendo como un producto funcional, aplicando prácticas habituales de desarrollo profesional:
+
+- Diseño guiado por especificaciones.
+- Arquitectura modular.
+- Modelado de dominio.
+- Persistencia con PostgreSQL.
+- Control de concurrencia.
+- Idempotencia.
+- Procesamiento Outbox.
+- API REST.
+- Documentación OpenAPI.
+- Tests unitarios, de integración y E2E.
+- Integración continua.
+
+La implementación se desarrolla de forma incremental, priorizando primero la consistencia del dominio y la fiabilidad de las operaciones críticas antes de ampliar la interfaz y las funcionalidades de usuario.
+
+La instancia de demostración utiliza datos controlados y no procesa pagos ni información personal real.
 
 ## Licencia
 
