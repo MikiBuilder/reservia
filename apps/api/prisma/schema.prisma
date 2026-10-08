@@ -129,3 +129,29 @@ model IdempotencyRecord {
   @@index([operation, key])
   @@index([expiresAt])
 }
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  OPERATOR
+}
+
+model User {
+  id           String     @id
+  email        String     @unique
+  passwordHash String
+  name         String
+  status       UserStatus @default(ACTIVE)
+  role         UserRole   @default(CUSTOMER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([status])
+  @@index([role])
+}
