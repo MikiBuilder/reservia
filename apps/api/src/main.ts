@@ -31,6 +31,7 @@ async function bootstrap(): Promise<void> {
     .addTag('health', 'Estado de la aplicación')
     .addTag('resources', 'Recursos reservables')
     .addTag('bookings', 'Reservas')
+    .addTag('auth', 'Registro y acceso')
     .addApiKey(
       {
         type: 'apiKey',

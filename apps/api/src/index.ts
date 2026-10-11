@@ -25,3 +25,13 @@ export * from './modules/availability/infrastructure/prisma-blackout-repository.
 export * from './modules/bookings/application/outbox-event-processor.js';
 export * from './modules/bookings/application/process-outbox-messages.js';
 export * from './modules/bookings/application/booking-created-event-processor.js';
+export * from './shared/application/id-generator.js';
+export * from './shared/infrastructure/uuid-id-generator.js';
+export * from './modules/identity/domain/email.js';
+export * from './modules/identity/domain/password-policy.js';
+export * from './modules/identity/domain/user.js';
+export * from './modules/identity/application/password-hasher.js';
+export * from './modules/identity/application/user-repository.js';
+export * from './modules/identity/application/register-user.js';
+export * from './modules/identity/infrastructure/argon2-password-hasher.js';
+export * from './modules/identity/infrastructure/prisma-user-repository.js';
