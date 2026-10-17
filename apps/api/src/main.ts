@@ -1,5 +1,7 @@
 import 'reflect-metadata';
 
+import { existsSync } from 'node:fs';
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import {
@@ -10,6 +12,10 @@ import {
 import { AppModule } from './app.module.js';
 
 async function bootstrap(): Promise<void> {
+  if (existsSync('.env')) {
+    process.loadEnvFile('.env');
+  }
+
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
@@ -39,6 +45,14 @@ async function bootstrap(): Promise<void> {
         in: 'header',
       },
       'Idempotency-Key',
+    )
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token',
     )
     .build();
 

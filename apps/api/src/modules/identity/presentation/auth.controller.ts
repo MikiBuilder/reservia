@@ -3,13 +3,18 @@ import {
   Body,
   ConflictException,
   Controller,
+  ForbiddenException,
+  HttpCode,
   Inject,
   Post,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 
+import { AuthenticateUser } from '../application/authenticate-user.js';
 import { RegisterUser } from '../application/register-user.js';
 
+import { LoginDto } from './login.dto.js';
 import { RegisterUserDto } from './register-user.dto.js';
 
 @ApiTags('auth')
@@ -18,6 +23,8 @@ export class AuthController {
   constructor(
     @Inject(RegisterUser)
     private readonly registerUser: RegisterUser,
+    @Inject(AuthenticateUser)
+    private readonly authenticateUser: AuthenticateUser,
   ) {}
 
   @ApiResponse({
@@ -91,6 +98,60 @@ export class AuthController {
         throw new ConflictException(
           'Email is already registered',
         );
+      }
+
+      throw error;
+    }
+  }
+
+  @ApiResponse({
+    status: 200,
+    description: 'Sesión iniciada correctamente.',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos de entrada inválidos.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Credenciales inválidas.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'La cuenta no está activa.',
+  })
+  @HttpCode(200)
+  @Post('login')
+  async login(@Body() body: LoginDto) {
+    try {
+      const result = await this.authenticateUser.execute({
+        email: body.email,
+        password: body.password,
+      });
+
+      return { data: result };
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === 'INVALID_LOGIN_REQUEST'
+      ) {
+        throw new BadRequestException(
+          'Email and password are required',
+        );
+      }
+
+      if (
+        error instanceof Error &&
+        error.message === 'INVALID_CREDENTIALS'
+      ) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      if (
+        error instanceof Error &&
+        error.message === 'USER_NOT_ACTIVE'
+      ) {
+        throw new ForbiddenException('Account is not active');
       }
 
       throw error;
