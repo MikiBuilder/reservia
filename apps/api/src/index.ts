@@ -35,3 +35,6 @@ export * from './modules/identity/application/user-repository.js';
 export * from './modules/identity/application/register-user.js';
 export * from './modules/identity/infrastructure/argon2-password-hasher.js';
 export * from './modules/identity/infrastructure/prisma-user-repository.js';
+export * from './modules/identity/application/access-token-issuer.js';
+export * from './modules/identity/application/authenticate-user.js';
+export * from './modules/identity/infrastructure/jwt-access-token-issuer.js';

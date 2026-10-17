@@ -1,4 +1,8 @@
-import { Algorithm, hash } from '@node-rs/argon2';
+import {
+  Algorithm,
+  hash as argon2Hash,
+  verify as argon2Verify,
+} from '@node-rs/argon2';
 
 import { PasswordHasher } from '../application/password-hasher.js';
 
@@ -11,6 +15,10 @@ const ARGON2_OPTIONS = {
 
 export class Argon2PasswordHasher implements PasswordHasher {
   async hash(plainPassword: string): Promise<string> {
-    return hash(plainPassword, ARGON2_OPTIONS);
+    return argon2Hash(plainPassword, ARGON2_OPTIONS);
+  }
+
+  async verify(plainPassword: string, passwordHash: string): Promise<boolean> {
+    return argon2Verify(passwordHash, plainPassword);
   }
 }
