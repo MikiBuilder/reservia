@@ -38,3 +38,5 @@ export * from './modules/identity/infrastructure/prisma-user-repository.js';
 export * from './modules/identity/application/access-token-issuer.js';
 export * from './modules/identity/application/authenticate-user.js';
 export * from './modules/identity/infrastructure/jwt-access-token-issuer.js';
+export * from './modules/identity/application/access-token-verifier.js';
+export * from './modules/identity/infrastructure/jwt-access-token-verifier.js';

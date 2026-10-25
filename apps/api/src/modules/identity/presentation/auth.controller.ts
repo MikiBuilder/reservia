@@ -4,20 +4,31 @@ import {
   ConflictException,
   Controller,
   ForbiddenException,
+  Get,
   HttpCode,
   Inject,
   Post,
+  Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
+import { AuthenticatedPrincipal } from '../application/access-token-verifier.js';
 import { AuthenticateUser } from '../application/authenticate-user.js';
 import { RegisterUser } from '../application/register-user.js';
 
+import { AuthGuard } from './auth.guard.js';
 import { LoginDto } from './login.dto.js';
+import { Public } from './public.decorator.js';
 import { RegisterUserDto } from './register-user.dto.js';
 
 @ApiTags('auth')
+@UseGuards(AuthGuard)
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -27,6 +38,7 @@ export class AuthController {
     private readonly authenticateUser: AuthenticateUser,
   ) {}
 
+  @Public()
   @ApiResponse({
     status: 201,
     description: 'Cuenta creada correctamente.',
@@ -104,6 +116,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @ApiResponse({
     status: 200,
     description: 'Sesión iniciada correctamente.',
@@ -156,5 +169,19 @@ export class AuthController {
 
       throw error;
     }
+  }
+
+  @ApiBearerAuth('access-token')
+  @ApiResponse({
+    status: 200,
+    description: 'Datos del usuario autenticado.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token de acceso ausente o inválido.',
+  })
+  @Get('me')
+  async me(@Req() request: { user: AuthenticatedPrincipal }) {
+    return { data: request.user };
   }
 }
