@@ -7,6 +7,7 @@ import { IdGenerator } from '../../../shared/application/id-generator.js';
 import { UuidIdGenerator } from '../../../shared/infrastructure/uuid-id-generator.js';
 
 import { AccessTokenIssuer } from '../application/access-token-issuer.js';
+import { AccessTokenVerifier } from '../application/access-token-verifier.js';
 import { AuthenticateUser } from '../application/authenticate-user.js';
 import { PasswordHasher } from '../application/password-hasher.js';
 import { RegisterUser } from '../application/register-user.js';
@@ -16,9 +17,11 @@ import { PasswordPolicy } from '../domain/password-policy.js';
 
 import { Argon2PasswordHasher } from '../infrastructure/argon2-password-hasher.js';
 import { JwtAccessTokenIssuer } from '../infrastructure/jwt-access-token-issuer.js';
+import { JwtAccessTokenVerifier } from '../infrastructure/jwt-access-token-verifier.js';
 import { PrismaUserRepository } from '../infrastructure/prisma-user-repository.js';
 
 import { AuthController } from './auth.controller.js';
+import { AuthGuard } from './auth.guard.js';
 
 export function readJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -54,6 +57,7 @@ export function readAccessTokenTtlSeconds(): number {
   providers: [
     PrismaService,
     PasswordPolicy,
+    AuthGuard,
     {
       provide: 'UserRepository',
       useFactory: (
@@ -76,6 +80,14 @@ export function readAccessTokenTtlSeconds(): number {
         jwtService: JwtService,
       ): AccessTokenIssuer =>
         new JwtAccessTokenIssuer(jwtService, readAccessTokenTtlSeconds()),
+      inject: [JwtService],
+    },
+    {
+      provide: 'AccessTokenVerifier',
+      useFactory: (
+        jwtService: JwtService,
+      ): AccessTokenVerifier =>
+        new JwtAccessTokenVerifier(jwtService),
       inject: [JwtService],
     },
     {

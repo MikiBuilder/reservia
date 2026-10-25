@@ -4,6 +4,7 @@ import {
   INestApplication,
   ValidationPipe,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { PrismaClient } from '@prisma/client';
 import {
@@ -35,6 +36,7 @@ describe.skipIf(!integrationTestsEnabled)(
     const loginEmail = `login-${randomUUID()}@example.com`;
     const wrongEmail = `clave-mala-${randomUUID()}@example.com`;
     const lockedEmail = `bloqueada-${randomUUID()}@example.com`;
+    const meEmail = `me-${randomUUID()}@example.com`;
 
     const deleteRegisteredUsers = async (): Promise<void> => {
       await prisma.user.deleteMany({
@@ -47,6 +49,7 @@ describe.skipIf(!integrationTestsEnabled)(
               loginEmail,
               wrongEmail,
               lockedEmail,
+              meEmail,
             ],
           },
         },
@@ -307,6 +310,100 @@ describe.skipIf(!integrationTestsEnabled)(
         .send({ email: 'cualquiera@example.com' });
 
       expect(response.status).toBe(400);
+    });
+
+    const authenticate = async (
+      userEmail: string,
+    ): Promise<{ accessToken: string; userId: string }> => {
+      const registered = await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send({
+          email: userEmail,
+          password,
+          name: 'Marta Ferrer',
+        });
+
+      expect(registered.status).toBe(201);
+
+      const login = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: userEmail,
+          password,
+        });
+
+      expect(login.status).toBe(200);
+
+      return {
+        accessToken: login.body.data.accessToken,
+        userId: registered.body.data.id,
+      };
+    };
+
+    it('GET /api/auth/me returns the token subject', async () => {
+      const { accessToken, userId } = await authenticate(meEmail);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual({
+        id: userId,
+        email: meEmail,
+        role: 'CUSTOMER',
+      });
+    });
+
+    it('GET /api/auth/me rejects requests without a bearer token', async () => {
+      const missing = await request(app.getHttpServer()).get(
+        '/api/auth/me',
+      );
+
+      expect(missing.status).toBe(401);
+      expect(missing.body.message).toBe('Access token is required');
+
+      const wrongScheme = await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Authorization', 'Basic abc123');
+
+      expect(wrongScheme.status).toBe(401);
+      expect(wrongScheme.body.message).toBe(
+        'Access token is required',
+      );
+    });
+
+    it('GET /api/auth/me rejects a token that is not valid', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer esto-no-es-un-jwt');
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe(
+        'Access token is not valid',
+      );
+    });
+
+    it('GET /api/auth/me rejects an expired token', async () => {
+      const jwtService = new JwtService({
+        secret:process.env.JWT_SECRET ?? 'secret-de-e2e-tests-con-mas-de-32-caracteres',
+      });
+
+      const expiredToken = jwtService.sign({
+        sub: 'user-expired',
+        email: `caducada-${randomUUID()}@example.com`,
+        role: 'CUSTOMER',
+        exp: Math.floor(Date.now() / 1000) - 60,
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${expiredToken}`);
+
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe(
+        'Access token has expired',
+      );
     });
   },
 );
