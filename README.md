@@ -24,7 +24,7 @@
 
 🚧 **Producto en desarrollo activo**
 
-Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. El núcleo transaccional y la API REST ya están implementados. Las próximas fases estarán centradas en autenticación, experiencia de usuario, automatización de procesos y despliegue.
+Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. El núcleo transaccional, la API REST y la autenticación local ya están implementados. Las próximas fases estarán centradas en autorización, experiencia de usuario, automatización de procesos y despliegue.
 
 
 ## Visión
@@ -47,6 +47,9 @@ El sistema está diseñado alrededor de un problema central:
 - Idempotencia en operaciones críticas.
 - Eventos Outbox.
 - Transacciones de aplicación.
+- Registro de usuarios.
+- Autenticación con tokens JWT.
+- Protección de endpoints.
 - Panel de administración previsto.
 - Métricas de ocupación previstas.
 
@@ -87,8 +90,16 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Tests E2E de la API REST.
 - ✅ Procesamiento de eventos Outbox mediante comando CLI.
 - ✅ Limpieza de registros idempotentes expirados mediante comando CLI.
+- ✅ Modelo `User` con estados y roles.
+- ✅ Registro de usuarios con Argon2id.
+- ✅ Endpoint `POST /api/auth/register`.
+- ✅ Login con tokens JWT.
+- ✅ Endpoint `POST /api/auth/login`.
+- ✅ Protección de endpoints con `AuthGuard`.
+- ✅ Endpoint `GET /api/auth/me`.
+- ✅ Tests E2E de autenticación.
 - ⏳ Automatización de jobs en producción.
-- ⏳ Autenticación y autorización.
+- ⏳ Autorización por roles.
 - ⏳ Cliente web conectado a la API.
 - ⏳ Despliegue público.
 
@@ -319,6 +330,107 @@ Respuestas principales:
 409 Conflict
 ```
 
+### Registrar una cuenta
+
+```http
+POST /api/auth/register
+```
+
+Body:
+
+```json
+{
+  "email": "marta@example.com",
+  "password": "Sala-Mediterranea-2026",
+  "name": "Marta Ferrer"
+}
+```
+
+Respuestas principales:
+
+```text
+201 Created
+400 Bad Request
+409 Conflict
+```
+
+### Iniciar sesión
+
+```http
+POST /api/auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "marta@example.com",
+  "password": "Sala-Mediterranea-2026"
+}
+```
+
+Respuesta `200 OK`:
+
+```json
+{
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "tokenType": "Bearer",
+    "expiresIn": 900,
+    "user": {
+      "id": "20a5d7e2-3616-495f-9b6e-2881293f8cd9",
+      "email": "marta@example.com",
+      "name": "Marta Ferrer",
+      "status": "ACTIVE",
+      "role": "CUSTOMER",
+      "createdAt": "2026-10-25T16:58:16.125Z"
+    }
+  }
+}
+```
+
+Respuestas principales:
+
+```text
+200 OK
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+```
+
+El `401 Unauthorized` devuelve el mismo cuerpo para email desconocido, contraseña incorrecta y email mal formado, para no revelar qué cuentas existen.
+
+### Usuario autenticado
+
+```http
+GET /api/auth/me
+```
+
+Headers:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+Respuesta `200 OK`:
+
+```json
+{
+  "data": {
+    "id": "20a5d7e2-3616-495f-9b6e-2881293f8cd9",
+    "email": "marta@example.com",
+    "role": "CUSTOMER"
+  }
+}
+```
+
+Respuestas principales:
+
+```text
+200 OK
+401 Unauthorized
+```
+
 ## OpenAPI
 
 Con la API iniciada, Swagger UI está disponible en:
@@ -336,6 +448,10 @@ La documentación incluye:
 - Header `Idempotency-Key`.
 - Ejemplos de DTOs.
 - Respuestas HTTP documentadas.
+- Registro de usuarios.
+- Login.
+- Perfil del usuario autenticado.
+- Esquema de seguridad `access-token`.
 
 ## Tests E2E
 
@@ -351,6 +467,10 @@ Incluyen:
 - Reintentos idempotentes.
 - Conflictos por solapamiento.
 - Validación de `Idempotency-Key`.
+- Registro de usuarios.
+- Login con credenciales válidas e inválidas.
+- Respuestas idénticas ante cuentas inexistentes.
+- `GET /api/auth/me` con y sin token.
 
 Para ejecutarlos en Windows CMD:
 
@@ -455,13 +575,17 @@ docker compose ps
 
 ### Variables de entorno
 
-Crea un archivo `.env` en la raíz:
+Crea un archivo `.env` en la raíz y otro en `apps/api` con el mismo contenido, a partir de `.env.example`:
 
 ```env
 NODE_ENV=development
 DATABASE_URL=postgresql://reservia:reservia@localhost:5432/reservia
 PORT=3000
+JWT_SECRET=change-me-generate-a-random-value-of-at-least-32-characters
+JWT_ACCESS_TOKEN_TTL_SECONDS=900
 ```
+
+`JWT_SECRET` debe tener al menos 32 caracteres. La API no arranca sin un secreto válido.
 
 No subas `.env` al repositorio.
 
@@ -585,10 +709,11 @@ reservia/
 
 Las funcionalidades se definen antes de implementarse.
 
-La primera especificación está disponible en:
+Las especificaciones disponibles son:
 
 ```text
 specs/create-booking.md
+specs/authentication.md
 ```
 
 Las especificaciones incluyen:
@@ -605,6 +730,7 @@ Las especificaciones incluyen:
 - [Arquitectura](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
 - [Especificación de creación de reservas](specs/create-booking.md)
+- [Especificación de autenticación](specs/authentication.md)
 - [Decisiones arquitectónicas](docs/adr/)
 
 ## Roadmap
@@ -649,8 +775,10 @@ Las especificaciones incluyen:
 - ✅ Documentación OpenAPI.
 - ✅ Swagger UI en `/docs`.
 - ✅ Tests E2E.
-- ⏳ Autenticación.
-- ⏳ Autorización.
+- ✅ Registro de usuarios.
+- ✅ Login con JWT.
+- ✅ Protección de endpoints.
+- ⏳ Autorización por roles.
 - ⏳ Gestión avanzada de errores HTTP.
 
 ### Cliente
@@ -686,6 +814,7 @@ El proyecto se está construyendo como un producto funcional, aplicando práctic
 - Procesamiento Outbox.
 - API REST.
 - Documentación OpenAPI.
+- Autenticación y protección de endpoints.
 - Tests unitarios, de integración y E2E.
 - Integración continua.
 
