@@ -6,3 +6,6 @@ dist/
 coverage/
 .DS_Store
 .vscode/
+.next/
+next-env.d.ts
+*.tsbuildinfo
