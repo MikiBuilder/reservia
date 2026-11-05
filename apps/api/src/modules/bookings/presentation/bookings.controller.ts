@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -6,9 +7,12 @@ import {
   Inject,
   NotFoundException,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 
 import {
+  ApiBearerAuth,
   ApiHeader,
   ApiResponse,
   ApiTags,
@@ -20,12 +24,19 @@ import { BusinessHoursRepository } from '../../availability/application/business
 import { BlackoutRepository } from '../../availability/application/blackout-repository.js';
 import { ResourceRepository } from '../../resources/application/resource-repository.js';
 
+import { AuthenticatedPrincipal } from '../../identity/application/access-token-verifier.js';
+import { AuthGuard } from '../../identity/presentation/auth.guard.js';
+import { Roles } from '../../identity/presentation/roles.decorator.js';
+import { RolesGuard } from '../../identity/presentation/roles.guard.js';
+
 import { IdempotentCreateBooking } from '../application/idempotent-create-booking.js';
 import { TimeRange } from '../domain/time-range.js';
 
 import { CreateBookingDto } from './create-booking.dto.js';
 
 @ApiTags('bookings')
+@ApiBearerAuth('access-token')
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('bookings')
 export class BookingsController {
   constructor(
@@ -57,6 +68,14 @@ export class BookingsController {
     description: 'Datos de entrada inválidos.',
   })
   @ApiResponse({
+    status: 401,
+    description: 'Token de acceso ausente o inválido.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'El rol del usuario no permite crear reservas.',
+  })
+  @ApiResponse({
     status: 404,
     description: 'Recurso no encontrado.',
   })
@@ -65,8 +84,10 @@ export class BookingsController {
     description:
       'Recurso no disponible o clave de idempotencia reutilizada.',
   })
+  @Roles('CUSTOMER')
   @Post()
   async create(
+    @Req() request: { user: AuthenticatedPrincipal },
     @Body() body: CreateBookingDto,
     @Headers('idempotency-key')
     idempotencyKey?: string,
@@ -76,6 +97,18 @@ export class BookingsController {
         'The Idempotency-Key header is required',
       );
     }
+
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      'customerId' in body
+    ) {
+      throw new BadRequestException(
+        'customerId must not be sent in the body',
+      );
+    }
+
+    const customerId = request.user.id;
 
     const resource =
       await this.resourceRepository.findById(
@@ -113,7 +146,7 @@ export class BookingsController {
       .update(
         JSON.stringify({
           resourceId: body.resourceId,
-          customerId: body.customerId,
+          customerId,
           startsAt: body.startsAt,
           endsAt: body.endsAt,
         }),
@@ -125,7 +158,7 @@ export class BookingsController {
         await this.createBooking.execute({
           id: body.id,
           resource,
-          customerId: body.customerId,
+          customerId,
           businessHours,
           period,
           blackouts,

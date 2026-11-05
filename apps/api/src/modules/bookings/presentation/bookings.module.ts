@@ -24,12 +24,14 @@ import { PrismaIdempotencyRepository } from '../infrastructure/prisma-idempotenc
 import { PrismaOutboxRepository } from '../infrastructure/prisma-outbox-repository.js';
 import { PrismaTransactionManager } from '../infrastructure/prisma-transaction-manager.js';
 
+import { IdentityModule } from '../../identity/presentation/identity.module.js';
 import { BookingsController } from './bookings.controller.js';
 
 import { BookingCreatedEventProcessor } from '../application/booking-created-event-processor.js';
 import { ProcessOutboxMessages } from '../application/process-outbox-messages.js';
 
 @Module({
+  imports: [IdentityModule],
   controllers: [BookingsController],
   providers: [
     PrismaService,
