@@ -14,6 +14,31 @@ interface ApiResource {
   createdAt: string;
 }
 
+export interface DailyBusinessHours {
+  day: string;
+  opensAt: string;
+  closesAt: string;
+}
+
+export interface AvailableSlot {
+  startsAt: string;
+  endsAt: string;
+}
+
+export interface ResourceAvailability {
+  resourceId: string;
+  date: string;
+  businessHours: DailyBusinessHours[];
+  availableSlots: AvailableSlot[];
+}
+
+function apiUrl(path: string): string {
+  const baseUrl =
+    process.env.API_URL ?? 'http://localhost:3000';
+
+  return `${baseUrl}${path}`;
+}
+
 export function toResourceSummary(
   resource: ApiResource,
 ): ResourceSummary {
@@ -28,13 +53,9 @@ export function toResourceSummary(
 export async function listResources(): Promise<
   ResourceSummary[]
 > {
-  const baseUrl =
-    process.env.API_URL ?? 'http://localhost:3000';
-
-  const response = await fetch(
-    `${baseUrl}/api/resources`,
-    { cache: 'no-store' },
-  );
+  const response = await fetch(apiUrl('/api/resources'), {
+    cache: 'no-store',
+  });
 
   if (!response.ok) {
     throw new Error(
@@ -47,4 +68,56 @@ export async function listResources(): Promise<
   };
 
   return body.data.map(toResourceSummary);
+}
+
+export async function getResource(
+  resourceId: string,
+): Promise<ResourceSummary | null> {
+  const response = await fetch(
+    apiUrl(`/api/resources/${resourceId}`),
+    { cache: 'no-store' },
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Resource request failed with status ${response.status}`,
+    );
+  }
+
+  const body = (await response.json()) as {
+    data: ApiResource;
+  };
+
+  return toResourceSummary(body.data);
+}
+
+export async function getResourceAvailability(
+  resourceId: string,
+  date?: string,
+): Promise<ResourceAvailability> {
+  const query =
+    date === undefined ? '' : `?date=${date}`;
+
+  const response = await fetch(
+    apiUrl(
+      `/api/resources/${resourceId}/availability${query}`,
+    ),
+    { cache: 'no-store' },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Availability request failed with status ${response.status}`,
+    );
+  }
+
+  const body = (await response.json()) as {
+    data: ResourceAvailability;
+  };
+
+  return body.data;
 }

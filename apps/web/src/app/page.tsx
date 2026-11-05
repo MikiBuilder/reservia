@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { listResources } from '../lib/resources';
 
 export default async function HomePage() {
@@ -47,19 +49,21 @@ async function ResourceCatalog() {
     return (
       <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {resources.map((resource) => (
-          <li
-            key={resource.id}
-            className="rounded-xl border border-slate-200 p-6 shadow-sm"
-          >
-            <h3 className="text-lg font-medium text-slate-900">
-              {resource.name}
-            </h3>
-            <p className="mt-2 text-slate-600">
-              {resource.description}
-            </p>
-            <p className="mt-4 text-sm text-slate-500">
-              Capacidad para {resource.capacity} personas
-            </p>
+          <li key={resource.id}>
+            <Link
+              href={`/resources/${resource.id}`}
+              className="block rounded-xl border border-slate-200 p-6 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+            >
+              <h3 className="text-lg font-medium text-slate-900">
+                {resource.name}
+              </h3>
+              <p className="mt-2 text-slate-600">
+                {resource.description}
+              </p>
+              <p className="mt-4 text-sm text-slate-500">
+                Capacidad para {resource.capacity} personas
+              </p>
+            </Link>
           </li>
         ))}
       </ul>
