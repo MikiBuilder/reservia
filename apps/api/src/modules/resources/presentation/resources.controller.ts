@@ -3,11 +3,13 @@ import {
   Get,
   Inject,
   Param,
+  Query,
 } from '@nestjs/common';
 
-import { ApiTags } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { GetResource } from '../application/get-resource.js';
+import { GetResourceAvailability } from '../application/get-resource-availability.js';
 import { ListResources } from '../application/list-resources.js';
 
 @ApiTags('resources')
@@ -19,6 +21,9 @@ export class ResourcesController {
 
     @Inject(GetResource)
     private readonly getResource: GetResource,
+
+    @Inject(GetResourceAvailability)
+    private readonly getResourceAvailability: GetResourceAvailability,
   ) {}
 
   @Get()
@@ -55,5 +60,25 @@ export class ResourcesController {
         createdAt: resource.createdAt,
       },
     };
+  }
+
+  @ApiQuery({
+    name: 'date',
+    required: false,
+    description:
+      'Fecha en formato YYYY-MM-DD. Por defecto, hoy en UTC.',
+  })
+  @Get(':id/availability')
+  async getResourceAvailabilityById(
+    @Param('id') id: string,
+    @Query('date') date?: string,
+  ) {
+    const availability =
+      await this.getResourceAvailability.execute({
+        resourceId: id,
+        date,
+      });
+
+    return { data: availability };
   }
 }

@@ -63,6 +63,44 @@ describe('AvailabilityService', () => {
     expect(result).toBe(false);
   });
 
+  it('allows a period that ends at the closing time', () => {
+    const service = new AvailabilityService(
+      new BookingConflictPolicy(),
+    );
+
+    const result = service.canBeBooked({
+      resource: createResource(),
+      businessHours: createBusinessHours(),
+      period: period(
+        '2026-08-31T19:00:00Z',
+        '2026-08-31T20:00:00Z',
+      ),
+      blackouts: [],
+      existingBookings: [],
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it('rejects a period that crosses midnight', () => {
+    const service = new AvailabilityService(
+      new BookingConflictPolicy(),
+    );
+
+    const result = service.canBeBooked({
+      resource: createResource(),
+      businessHours: createBusinessHours(),
+      period: period(
+        '2026-08-31T19:00:00Z',
+        '2026-09-01T01:00:00Z',
+      ),
+      blackouts: [],
+      existingBookings: [],
+    });
+
+    expect(result).toBe(false);
+  });
+
   it('rejects a resource affected by a blackout', () => {
     const service = new AvailabilityService(
       new BookingConflictPolicy(),
