@@ -24,14 +24,6 @@ export class CreateBookingDto {
   resourceId!: string;
 
   @ApiProperty({
-    example: 'customer-001',
-    description: 'Identificador del cliente.',
-  })
-  @IsString()
-  @IsNotEmpty()
-  customerId!: string;
-
-  @ApiProperty({
     example: '2026-08-31T10:00:00.000Z',
     description: 'Fecha de inicio en UTC.',
   })

@@ -23,6 +23,8 @@ import { PrismaUserRepository } from '../infrastructure/prisma-user-repository.j
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 
+import { RolesGuard } from './roles.guard.js';
+
 export function readJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
 
@@ -54,10 +56,12 @@ export function readAccessTokenTtlSeconds(): number {
     }),
   ],
   controllers: [AuthController],
+  exports: [AuthGuard, RolesGuard, 'AccessTokenVerifier'],
   providers: [
     PrismaService,
     PasswordPolicy,
     AuthGuard,
+    RolesGuard,
     {
       provide: 'UserRepository',
       useFactory: (

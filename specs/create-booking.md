@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Permitir que una persona reserve un recurso durante una franja horaria válida sin producir solapamientos.
+Permitir que un usuario autenticado reserve un recurso a su nombre durante una franja horaria válida sin producir solapamientos.
 
 ## Reglas de negocio
 
@@ -13,10 +13,11 @@ Permitir que una persona reserve un recurso durante una franja horaria válida s
 5. No puede existir otra reserva activa solapada.
 6. La petición debe ser idempotente.
 7. La operación debe dejar un registro de auditoría.
+8. La reserva se crea a nombre del usuario autenticado y exige el rol `CUSTOMER`; el cliente no se recibe en la petición.
 
 ## Criterios de aceptación
 
-```gherkin
+~~~gherkin
 Scenario: crear una reserva válida
   Given que el recurso está disponible entre las 09:00 y las 13:00
   When la persona solicita reservar de 10:00 a 11:00
@@ -34,4 +35,10 @@ Scenario: repetir una petición
   When se repite la petición
   Then se devuelve el resultado original
   And no se crea otra reserva
-```
+
+Scenario: reservar a nombre de otra persona
+  Given un usuario autenticado con rol CUSTOMER
+  When solicita una reserva indicando un cliente distinto al autenticado
+  Then la petición se rechaza
+  And no se crea ninguna reserva
+~~~
