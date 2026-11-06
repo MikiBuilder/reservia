@@ -24,7 +24,7 @@
 
 🚧 **Producto en desarrollo activo**
 
-Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. El núcleo transaccional, la API REST y la autenticación local ya están implementados. Las próximas fases estarán centradas en autorización, experiencia de usuario, automatización de procesos y despliegue.
+Reservia se construye siguiendo un enfoque de **Spec-Driven Development**. El núcleo transaccional, la API REST, la autenticación y el cliente web ya están implementados. Las próximas fases estarán centradas en gestión de reservas del usuario, administración, automatización de procesos y despliegue.
 
 
 ## Visión
@@ -50,6 +50,8 @@ El sistema está diseñado alrededor de un problema central:
 - Registro de usuarios.
 - Autenticación con tokens JWT.
 - Protección de endpoints.
+- Cliente web con catálogo, detalle y disponibilidad.
+- Registro, sesión y reserva desde el navegador.
 - Panel de administración previsto.
 - Métricas de ocupación previstas.
 
@@ -82,6 +84,7 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Endpoint `GET /api/health`.
 - ✅ Endpoint `GET /api/resources`.
 - ✅ Endpoint `GET /api/resources/:id`.
+- ✅ Endpoint `GET /api/resources/:id/availability`.
 - ✅ Endpoint `POST /api/bookings`.
 - ✅ Validación de DTOs.
 - ✅ Idempotencia mediante `Idempotency-Key`.
@@ -98,9 +101,12 @@ El sistema está diseñado alrededor de un problema central:
 - ✅ Protección de endpoints con `AuthGuard`.
 - ✅ Endpoint `GET /api/auth/me`.
 - ✅ Tests E2E de autenticación.
+- ✅ Autorización por rol en la creación de reservas.
+- ✅ Cliente web con Next.js y Tailwind.
+- ✅ Catálogo de espacios y detalle con disponibilidad.
+- ✅ Registro, login y logout desde el navegador.
+- ✅ Reserva de huecos desde el cliente web.
 - ⏳ Automatización de jobs en producción.
-- ⏳ Autorización por roles.
-- ⏳ Cliente web conectado a la API.
 - ⏳ Despliegue público.
 
 ## Arquitectura
@@ -128,6 +134,8 @@ La lógica está separada en capas:
 
 ```text
 POST /api/bookings
+        ↓
+Autenticación y rol
         ↓
 Validación del DTO
         ↓
@@ -161,6 +169,8 @@ Recurso activo
 + Sin reservas solapadas
 = Recurso disponible
 ```
+
+Los huecos libres que se muestran al consultar la disponibilidad se calculan con esa misma regla: solo aparecen los que la creación de reservas aceptaría.
 
 La protección contra solapamientos existe en dos niveles.
 
@@ -296,6 +306,48 @@ GET /api/resources
 GET /api/resources/:id
 ```
 
+### Consultar la disponibilidad
+
+```http
+GET /api/resources/:id/availability?date=2026-08-31
+```
+
+El parámetro `date` es opcional, en formato `YYYY-MM-DD`; por defecto se consulta el día actual en UTC.
+
+Respuesta `200 OK`:
+
+```json
+{
+  "data": {
+    "resourceId": "demo-resource-1",
+    "date": "2026-08-31",
+    "businessHours": [
+      {
+        "day": "MONDAY",
+        "opensAt": "08:00",
+        "closesAt": "20:00"
+      }
+    ],
+    "availableSlots": [
+      {
+        "startsAt": "2026-08-31T08:00:00.000Z",
+        "endsAt": "2026-08-31T09:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+`businessHours` es el horario semanal del recurso y `availableSlots` son los huecos libres del día consultado.
+
+Respuestas principales:
+
+```text
+200 OK
+400 Bad Request
+404 Not Found
+```
+
 ### Crear una reserva
 
 ```http
@@ -306,6 +358,7 @@ Headers:
 
 ```http
 Content-Type: application/json
+Authorization: Bearer <accessToken>
 Idempotency-Key: booking-request-001
 ```
 
@@ -315,17 +368,20 @@ Body:
 {
   "id": "booking-api-001",
   "resourceId": "demo-resource-1",
-  "customerId": "customer-001",
   "startsAt": "2026-08-31T10:00:00.000Z",
   "endsAt": "2026-08-31T11:00:00.000Z"
 }
 ```
+
+El cliente de la reserva se toma del token de acceso. El cuerpo no acepta `customerId`: enviarlo se rechaza con `400`.
 
 Respuestas principales:
 
 ```text
 201 Created
 400 Bad Request
+401 Unauthorized
+403 Forbidden
 404 Not Found
 409 Conflict
 ```
@@ -444,6 +500,7 @@ La documentación incluye:
 - Health check.
 - Recursos.
 - Detalle de recursos.
+- Disponibilidad de recursos.
 - Creación de reservas.
 - Header `Idempotency-Key`.
 - Ejemplos de DTOs.
@@ -471,6 +528,8 @@ Incluyen:
 - Login con credenciales válidas e inválidas.
 - Respuestas idénticas ante cuentas inexistentes.
 - `GET /api/auth/me` con y sin token.
+- Disponibilidad y huecos libres del día.
+- Autenticación y rol en la creación de reservas.
 
 Para ejecutarlos en Windows CMD:
 
@@ -531,7 +590,6 @@ Los patrones se incorporan únicamente cuando resuelven una necesidad concreta.
 
 - Vitest.
 - Supertest.
-- Playwright.
 - GitHub Actions.
 - TypeScript strict mode.
 
@@ -660,16 +718,16 @@ pnpm --filter @reservia/api outbox:process
 pnpm --filter @reservia/api idempotency:cleanup
 ```
 
-### Ejecutar la demo visual
+### Arrancar el cliente web
 
 ```bash
-python3 -m http.server 4173
+pnpm --filter @reservia/web dev
 ```
 
 Después abre:
 
 ```text
-http://localhost:4173
+http://localhost:3001
 ```
 
 ## Estructura del proyecto
@@ -677,18 +735,23 @@ http://localhost:4173
 ```text
 reservia/
 ├── apps/
-│   └── api/
-│       ├── prisma/
-│       │   ├── migrations/
-│       │   └── schema.prisma
+│   ├── api/
+│   │   ├── prisma/
+│   │   │   ├── migrations/
+│   │   │   └── schema.prisma
+│   │   ├── src/
+│   │   │   ├── commands/
+│   │   │   ├── database/
+│   │   │   ├── modules/
+│   │   │   ├── shared/
+│   │   │   ├── app.module.ts
+│   │   │   ├── main.ts
+│   │   │   └── index.ts
+│   │   └── tests/
+│   └── web/
 │       ├── src/
-│       │   ├── commands/
-│       │   ├── database/
-│       │   ├── modules/
-│       │   ├── shared/
-│       │   ├── app.module.ts
-│       │   ├── main.ts
-│       │   └── index.ts
+│       │   ├── app/
+│       │   └── lib/
 │       └── tests/
 ├── assets/
 ├── docs/
@@ -769,6 +832,7 @@ Las especificaciones incluyen:
 - ✅ `GET /api/health`.
 - ✅ `GET /api/resources`.
 - ✅ `GET /api/resources/:id`.
+- ✅ `GET /api/resources/:id/availability`.
 - ✅ `POST /api/bookings`.
 - ✅ Validación de DTOs.
 - ✅ Idempotencia mediante `Idempotency-Key`.
@@ -778,14 +842,16 @@ Las especificaciones incluyen:
 - ✅ Registro de usuarios.
 - ✅ Login con JWT.
 - ✅ Protección de endpoints.
-- ⏳ Autorización por roles.
+- ✅ Autorización por rol en reservas.
 - ⏳ Gestión avanzada de errores HTTP.
 
 ### Cliente
 
-- ⏳ Next.js.
-- ⏳ Calendario de disponibilidad.
-- ⏳ Flujo de reserva conectado.
+- ✅ Next.js.
+- ✅ Catálogo y detalle de espacios.
+- ✅ Calendario de disponibilidad.
+- ✅ Registro y login.
+- ✅ Flujo de reserva conectado.
 - ⏳ Panel de usuario.
 - ⏳ Panel de administración.
 - ⏳ Gestión de horarios y bloqueos.
@@ -815,6 +881,7 @@ El proyecto se está construyendo como un producto funcional, aplicando práctic
 - API REST.
 - Documentación OpenAPI.
 - Autenticación y protección de endpoints.
+- Cliente web con reserva en línea.
 - Tests unitarios, de integración y E2E.
 - Integración continua.
 
