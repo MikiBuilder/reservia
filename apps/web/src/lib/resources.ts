@@ -1,3 +1,5 @@
+import { apiUrl } from './api-url';
+
 export interface ResourceSummary {
   id: string;
   name: string;
@@ -30,13 +32,6 @@ export interface ResourceAvailability {
   date: string;
   businessHours: DailyBusinessHours[];
   availableSlots: AvailableSlot[];
-}
-
-function apiUrl(path: string): string {
-  const baseUrl =
-    process.env.API_URL ?? 'http://localhost:3000';
-
-  return `${baseUrl}${path}`;
 }
 
 export function toResourceSummary(
